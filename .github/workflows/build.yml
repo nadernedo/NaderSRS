@@ -27,9 +27,9 @@ jobs:
           
           cd "$TARGET"
           
-          # الخطوة السحرية اللي هتحل المشكلة: تحميل المكتبة اللي الـ AI نساها
-          npm install expo-device
           npm install
+          # الحل هنا: استخدام npx expo install عشان يجيب النسخة المتوافقة بالظبط
+          npx expo install expo-device
           
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
           keytool -genkey -v -keystore my-key.jks -alias my-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=App, OU=Dev, O=App, L=City, ST=State, C=EG"
