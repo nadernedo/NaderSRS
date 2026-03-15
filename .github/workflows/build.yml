@@ -22,8 +22,11 @@ jobs:
           cd "$TARGET"
           npm install
           
-          # الحل الآمن لمسح الصور بدون كسر الملف
-          jq 'del(.expo.icon, .expo.splash.image, .expo.android.adaptiveIcon.foregroundImage)' app.json > tmp.json && mv tmp.json app.json
+          # الكود ده بيصنع صور وهمية عشان السيرفر يكمل بناء الأندرويد
+          mkdir -p assets
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=" | base64 -d > assets/icon.png
+          cp assets/icon.png assets/splash.png
+          cp assets/icon.png assets/adaptive-icon.png
           
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
           keytool -genkey -v -keystore my-key.jks -alias my-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=App, OU=Dev, O=App, L=City, ST=State, C=EG"
