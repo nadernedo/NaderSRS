@@ -7,20 +7,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Unzip project
-        run: unzip -o *.zip
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 18
       - name: Install EAS CLI
         run: npm install -g eas-cli
-      - name: Install Dependencies
-        run: npm install
-      - name: Prepare APK
-        run: |
-          echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
-      - name: Build
+      - name: Extract and Build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: eas build --platform android --profile preview --non-interactive
+        run: |
+          unzip -o *.zip
+          TARGET=$(dirname "$(find . -name 'package.json' | head -n 1)")
+          echo "Found project in $TARGET"
+          cd "$TARGET"
+          npm install
+          echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
+          eas build --platform android --profile preview --non-interactive
