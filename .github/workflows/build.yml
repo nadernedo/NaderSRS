@@ -19,8 +19,8 @@ jobs:
         run: |
           unzip -o *.zip
           TARGET=$(dirname "$(find . -name 'package.json' | head -n 1)")
-          echo "Found project in $TARGET"
           cd "$TARGET"
           npm install
+          eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --non-interactive
           echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
           eas build --platform android --profile preview --non-interactive
