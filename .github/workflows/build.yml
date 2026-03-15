@@ -20,14 +20,17 @@ jobs:
           unzip -o *.zip
           TARGET=$(dirname "$(find . -name 'package.json' | head -n 1)")
           
-          # السطور دي بتعمل مجلد الصور وبتاخد صورتك logo.png تخليها أيقونة للتطبيق
           mkdir -p "$TARGET/assets"
           cp logo.png "$TARGET/assets/icon.png"
           cp logo.png "$TARGET/assets/splash.png"
           cp logo.png "$TARGET/assets/adaptive-icon.png"
           
           cd "$TARGET"
+          
+          # الخطوة السحرية اللي هتحل المشكلة: تحميل المكتبة اللي الـ AI نساها
+          npm install expo-device
           npm install
+          
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
           keytool -genkey -v -keystore my-key.jks -alias my-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=App, OU=Dev, O=App, L=City, ST=State, C=EG"
           echo '{"android": {"keystore": {"keystorePath": "my-key.jks", "keystorePassword": "123456", "keyAlias": "my-alias", "keyPassword": "123456"}}}' > credentials.json
