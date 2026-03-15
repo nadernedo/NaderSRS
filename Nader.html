@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Nader RN — Download Code</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #7C3AED; min-height: 100vh;
+         display: flex; align-items: center; justify-content: center; margin: 0; }
+  .card { background: white; border-radius: 24px; padding: 40px; max-width: 460px;
+           width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  h1 { color: #7C3AED; font-size: 28px; margin-bottom: 8px; }
+  p  { color: #666; margin-bottom: 28px; line-height: 1.6; }
+  button { background: #7C3AED; color: white; border: none; padding: 16px 32px;
+            border-radius: 14px; font-size: 17px; font-weight: 800;
+            cursor: pointer; width: 100%; margin-bottom: 12px; }
+  button:hover { background: #6D28D9; }
+  .files { text-align: left; background: #F5F3FF; border-radius: 12px;
+            padding: 16px; margin-top: 20px; font-size: 13px; color: #6D28D9; }
+  .files div { padding: 3px 0; }
+  #status { color: #10B981; font-weight: 700; margin-top: 12px; min-height: 24px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div style="font-size:64px">🐘</div>
+  <h1>Nader App</h1>
+  <p>React Native — كود كامل جاهز للبناء<br>اضغط الزر لتحميل المشروع كاملاً</p>
+  <button onclick="buildZip()">⬇️ تحميل المشروع (ZIP)</button>
+  <div id="status"></div>
+  <div class="files">
+    <strong>📁 الملفات المضمّنة (20):</strong><br><br>
+    <div>📄 App.js</div><div>📄 app.json</div><div>📄 babel.config.js</div><div>📄 eas.json</div><div>📄 package.json</div><div>📄 src/components/index.js</div><div>📄 src/navigation/AppNavigator.js</div><div>📄 src/screens/AddScreen.js</div><div>📄 src/screens/HomeScreen.js</div><div>📄 src/screens/OnboardingScreen.js</div><div>📄 src/screens/ParagraphChallenge.js</div><div>📄 src/screens/ReviewScreen.js</div><div>📄 src/screens/SettingsScreen.js</div><div>📄 src/screens/StatsScreen.js</div><div>📄 src/screens/WordsScreen.js</div><div>📄 src/services/ai.js</div><div>📄 src/services/notifications.js</div><div>📄 src/services/storage.js</div><div>📄 src/state.js</div><div>📄 src/theme.js</div>
+  </div>
+</div>
+
+<script>
+const FILES = [
+  { path: "App.js", content: `import React, { useState, useEffect, useCallback, useReducer } from 'react';
+import { View, StatusBar, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black } from '@expo-google-fonts/nunito';
+
+import { loadState, saveState } from './src/services/storage';
+import { reducer, todayStr, initState } from './src/state';
+import { scheduleDaily } from './src/services/notifications';
+import AppNavigator     from './src/navigation/AppNavigator';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+
+SplashScreen.preventAutoHideAsync();
+
+export default function App() {
+  const [appState, dispatch] = useReducer(reducer, null);
+  const [ready, setReady]    = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    Nunito_400Regular, Nunito_600SemiBold,
+    Nunito_700Bold, Nunito_800ExtraBold, Nunito_900Black,
+  });
+
+  // Load state from AsyncStorage on boot
+  useEffect(() => {
+    if (appState === null) {
+      loadState().then(saved => {
+        dispatch({ type:'_LOAD', state: saved });
+      });
+    }
+  }, []);
+
+  // Save to AsyncStorage on every state change
+  useEffect(() => {
+    if (appState) saveState(appState);
+  }, [appState]);
+
+  // Daily hint refresh
+  useEffect(() => {
+    if (!appState) return;
+    const last = appState.profile.lastActive;
+    if (last && last !== todayStr() && appState.profile.hintPoints < 30) {
+      dispatch({ type:'SAVE_PROFILE', profile:{ hintPoints:30 } });
+    }
+  }, [appState?.profile?.lastActive]);
+
+  // Re-schedule notification on boot
+  useEffect(() => {
+    if (!appState) return;
+    const { notifEnabled, notifTime, notifMessage, notifCustom } = appState.settings;
+    if (notifEnabled) {
+      scheduleDaily(notifEnabled, notifTime, notifMessage, notifCustom, appState.profile);
+    }
+  }, [!!appState]);
+
+  // Hide splash when ready
+  useEffect(() => {
+    if (fontsLoaded && appState !== null) {
+      setReady(true);
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, appState]);
+
+  if (!ready || appState === null) {
+    return (
+      <View style={s.splash}>
+        <Text style={s.splashEmoji}>🐘</Text>
+        <ActivityIndicator color="#fff" size="large" style={{ marginTop:16 }}/>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaProvider>
+      <StatusBar
+        barStyle={appState.settings.darkMode ? 'light-content' : 'dark-content'}
+        backgroundColor={appState.settings.darkMode ? '#0F0F1A' : '#7C3AED'}
+      />
+      <SafeAreaView style={{ flex:1, backgroundColor: appState.settings.darkMode ? '#0F0F1A' : '#EDECF8' }} edges={['top']}>
+        {!appState.onboarded
+          ? <OnboardingScreen onDone={({ name, language }) => dispatch({ type:'ONBOARD', name, language })}/>
+          : <AppNavigator state={appState} dispatch={dispatch}/>
+        }
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
+
+const s = StyleSheet.create({
+  splash: { flex:1, backgroundColor:'#7C3AED', alignItems:'center', justifyContent:'center' },
+  splashEmoji: { fontSize:80 },
+});
+` },
+  { path: "app.json", content: `{
+  "expo": {
+    "name": "Nader",
+    "slug": "nader-rn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#7C3AED" },
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.nader.app" },
+    "android": {
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#7C3AED" },
+      "package": "com.nader.app",
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "INTERNET"]
+    },
+    "plugins": [
+      ["expo-notifications", { "icon": "./assets/icon.png", "color": "#7C3AED" }],
+      ["expo-image-picker", { "photosPermission": "Allow Nader to access photos." }]
+    ],
+    "extra": { "eas": { "projectId": "YOUR_PROJECT_ID" } }
+  }
+}
+` },
+  { path: "babel.config.js", content: `module.exports = function(api) { api.cache(true); return { presets: ['babel-preset-expo'] }; };
+` },
+  { path: "eas.json", content: `{ "cli": { "version": ">= 5.9.1" }, "build": { "preview": { "distribution": "internal", "android": { "buildType": "apk" } }, "production": { "android": { "buildType": "apk" } } } }
+` },
+  { path: "package.json", content: `{
+  "name": "nader-rn",
+  "version": "1.0.0",
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "build:apk": "eas build -p android --profile preview"
+  },
+  "dependencies": {
+    "expo": "~51.0.28",
+    "expo-status-bar": "~1.12.1",
+    "expo-font": "~12.0.9",
+    "expo-splash-screen": "~0.27.5",
+    "expo-speech": "~13.0.1",
+    "expo-notifications": "~0.28.19",
+    "expo-image-picker": "~15.0.7",
+    "expo-linear-gradient": "~13.0.2",
+    "expo-haptics": "~13.0.1",
+    "@expo-google-fonts/nunito": "^0.2.3",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-safe-area-context": "4.10.5",
+    "react-native-screens": "~3.31.1",
+    "react-native-svg": "15.2.0",
+    "react-native-chart-kit": "^6.12.0",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@react-navigation/native": "^6.1.17",
+    "@react-navigation/bottom-tabs": "^6.5.20",
+    "@react-navigation/native-stack": "^6.9.26"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  },
+  "private": true
+}
+` },
+  { path: "src/components/index.js", content: `import React, { useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, ActivityIndicator,
+} from 'react-native';
+import { T } from '../theme';
+import { statusColors, statusLabel } from '../state';
+
+// ── Elephant mascot ───────────────────────────────────────────────────────────
+export const Elephant = ({ size=68 }) => (
+  <Text style={{ fontSize:size, lineHeight:size*1.2 }}>🐘</Text>
+);
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+export const Card = ({ children, style={}, onPress, dk }) => {
+  const t = T(dk);
+  const content = (
+    <View style={[{
+      backgroundColor:t.card, borderRadius:18, padding:16,
+      borderWidth:1, borderColor:t.border,
+      shadowColor:'#7C3AED', shadowOffset:{width:0,height:2},
+      shadowOpacity:0.07, shadowRadius:8, elevation:3,
+    }, style]}>
+      {children}
+    </View>
+  );
+  if (onPress) return <TouchableOpacity onPress={onPress} activeOpacity={0.85}>{content}</TouchableOpacity>;
+  return content;
+};
+
+// ── Btn ───────────────────────────────────────────────────────────────────────
+const VARIANTS = {
+  primary:{ bg:['#8B5CF6','#7C3AED'], txt:'#fff' },
+  green:  { bg:['#10B981','#059669'], txt:'#fff' },
+  red:    { bg:['#EF4444','#DC2626'], txt:'#fff' },
+  gold:   { bg:['#F59E0B','#D97706'], txt:'#fff' },
+  ghost:  { bg:null,                  txt:'#7C3AED', border:'#7C3AED' },
+  white:  { bg:null,                  txt:'#555',    border:'#E0DCFF'  },
+};
+const SIZES = {
+  sm:{ py:7,  px:14, fs:13, r:10 },
+  md:{ py:12, px:20, fs:15, r:13 },
+  lg:{ py:15, px:28, fs:16, r:15 },
+};
+export const Btn = ({ children, onPress, variant='primary', disabled, full, size='md', style={}, dk }) => {
+  const [pressed, setPressed] = useState(false);
+  const v = VARIANTS[variant] || VARIANTS.primary;
+  const s = SIZES[size] || SIZES.md;
+  const bg = v.bg ? (pressed ? v.bg[1] : v.bg[0]) : (dk ? '#2D2D48' : '#fff');
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      onPressIn={()=>setPressed(true)}
+      onPressOut={()=>setPressed(false)}
+      activeOpacity={0.85}
+      style={[{
+        backgroundColor:bg,
+        borderRadius:s.r,
+        paddingVertical:s.py,
+        paddingHorizontal:s.px,
+        alignItems:'center',
+        justifyContent:'center',
+        opacity:disabled ? 0.5 : 1,
+        borderWidth: v.border ? 2 : 0,
+        borderColor: v.border || 'transparent',
+        width: full ? '100%' : undefined,
+        transform:[{ translateY: pressed ? 2 : 0 }],
+        shadowColor:'#5B21B6',
+        shadowOffset:{ width:0, height: pressed ? 1 : 4 },
+        shadowOpacity: v.bg ? 0.3 : 0,
+        shadowRadius:4, elevation: pressed ? 1 : 4,
+      }, style]}
+    >
+      <Text style={{ color:v.txt||(dk?'#E8E8F0':'#555'), fontSize:s.fs, fontWeight:'800' }}>
+        {children}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+// ── Inp (TextInput) ───────────────────────────────────────────────────────────
+export const Inp = ({ value, onChange, placeholder, type='text', rows, style={}, onKeyPress, autoFocus, dk }) => {
+  const t = T(dk);
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChange}
+      placeholder={placeholder}
+      placeholderTextColor={t.textMuted}
+      secureTextEntry={type==='password'}
+      multiline={!!rows}
+      numberOfLines={rows}
+      autoFocus={autoFocus}
+      onKeyPress={onKeyPress}
+      onFocus={()=>setFocused(true)}
+      onBlur={()=>setFocused(false)}
+      style={[{
+        backgroundColor:t.card,
+        color:t.text,
+        borderRadius:12,
+        borderWidth:2,
+        borderColor:focused ? '#7C3AED' : t.border,
+        paddingHorizontal:14,
+        paddingVertical:12,
+        fontSize:15,
+        fontWeight:'500',
+        textAlignVertical: rows ? 'top' : 'center',
+        minHeight: rows ? rows*24+24 : undefined,
+      }, style]}
+    />
+  );
+};
+
+// ── Toggle ────────────────────────────────────────────────────────────────────
+export const Toggle = ({ value, onChange }) => (
+  <TouchableOpacity
+    onPress={()=>onChange(!value)}
+    activeOpacity={0.8}
+    style={{
+      width:50, height:28, borderRadius:14,
+      backgroundColor: value ? '#7C3AED' : '#CCC',
+      justifyContent:'center',
+      paddingHorizontal:3,
+    }}
+  >
+    <View style={{
+      width:22, height:22, borderRadius:11, backgroundColor:'#fff',
+      alignSelf: value ? 'flex-end' : 'flex-start',
+      shadowColor:'#000', shadowOffset:{width:0,height:1},
+      shadowOpacity:0.2, shadowRadius:2, elevation:2,
+    }}/>
+  </TouchableOpacity>
+);
+
+// ── Badge ─────────────────────────────────────────────────────────────────────
+export const Badge = ({ status, dk }) => {
+  const sc = statusColors(status, dk);
+  return (
+    <View style={{ backgroundColor:sc.bg, paddingHorizontal:11, paddingVertical:4, borderRadius:20 }}>
+      <Text style={{ color:sc.c, fontSize:12, fontWeight:'700' }}>{statusLabel(status)}</Text>
+    </View>
+  );
+};
+
+// ── SpeakBtn ──────────────────────────────────────────────────────────────────
+export const SpeakBtn = ({ onPress, size=18, dk }) => {
+  const t = T(dk);
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        backgroundColor:t.gLight, borderRadius:999,
+        width:size+14, height:size+14,
+        alignItems:'center', justifyContent:'center',
+      }}
+    >
+      <Text style={{ fontSize:size }}>🔊</Text>
+    </TouchableOpacity>
+  );
+};
+
+// ── Spinner ───────────────────────────────────────────────────────────────────
+export const Spinner = ({ dk, message }) => {
+  const t = T(dk);
+  return (
+    <View style={{ alignItems:'center', padding:36, backgroundColor:t.pLight, borderRadius:16 }}>
+      <Text style={{ fontSize:56 }}>🐘</Text>
+      <ActivityIndicator color='#7C3AED' size='large' style={{ marginTop:8 }}/>
+      <Text style={{ color:'#7C3AED', fontWeight:'700', marginTop:10, fontSize:14, textAlign:'center' }}>
+        {message}
+      </Text>
+    </View>
+  );
+};
+
+// ── ErrBox ────────────────────────────────────────────────────────────────────
+export const ErrBox = ({ msg, dk }) => {
+  const t = T(dk);
+  if (!msg) return null;
+  return (
+    <View style={{
+      backgroundColor:t.rLight, borderRadius:10, padding:12,
+      borderWidth:1, borderColor:t.red+'30', marginBottom:10,
+    }}>
+      <Text style={{ color:t.red, fontSize:13 }}>{msg}</Text>
+    </View>
+  );
+};
+
+// ── Section label ─────────────────────────────────────────────────────────────
+export const SectionLabel = ({ children, dk }) => {
+  const t = T(dk);
+  return (
+    <Text style={{
+      color:t.textMuted, fontSize:12, fontWeight:'700',
+      textTransform:'uppercase', letterSpacing:1,
+      marginBottom:8, marginTop:4,
+    }}>
+      {children}
+    </Text>
+  );
+};
+
+// ── Row (flex row helper) ─────────────────────────────────────────────────────
+export const Row = ({ children, style={} }) => (
+  <View style={[{ flexDirection:'row', alignItems:'center' }, style]}>
+    {children}
+  </View>
+);
+` },
+  { path: "src/navigation/AppNavigator.js", content: `import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { T } from '../theme';
+import HomeScreen     from '../screens/HomeScreen';
+import WordsScreen    from '../screens/WordsScreen';
+import AddScreen      from '../screens/AddScreen';
+import ReviewScreen   from '../screens/ReviewScreen';
+import StatsScreen    from '../screens/StatsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+
+const TABS = [
+  { id:'home',     icon:'🏠', label:'الرئيسية' },
+  { id:'words',    icon:'📝', label:'كلماتي'   },
+  { id:'add',      icon:'➕', label:'إضافة'    },
+  { id:'stats',    icon:'📊', label:'إحصائيات' },
+  { id:'settings', icon:'⚙️', label:'إعدادات'  },
+];
+
+export default function AppNavigator({ state, dispatch }) {
+  const [tab,        setTab]        = useState('home');
+  const [showReview, setShowReview] = useState(false);
+  const [toast,      setToast]      = useState(null);
+  const dk = state.settings.darkMode;
+  const t  = T(dk);
+
+  const onNav = (id) => {
+    if (id === 'review') setShowReview(true);
+    else setTab(id);
+  };
+
+  if (showReview) return (
+    <ReviewScreen
+      state={state} dispatch={dispatch} dk={dk}
+      onComplete={()=>setShowReview(false)}
+    />
+  );
+
+  const screens = {
+    home:     <HomeScreen     state={state} dispatch={dispatch} onNav={onNav} dk={dk}/>,
+    words:    <WordsScreen    state={state} dispatch={dispatch} dk={dk}/>,
+    add:      <AddScreen      state={state} dispatch={dispatch} dk={dk}/>,
+    stats:    <StatsScreen    state={state} dk={dk}/>,
+    settings: <SettingsScreen state={state} dispatch={dispatch} dk={dk} onToast={setToast}/>,
+  };
+
+  return (
+    <View style={{ flex:1, backgroundColor:t.bg }}>
+      {/* Screen content */}
+      <View style={{ flex:1 }}>
+        {screens[tab] || screens.home}
+      </View>
+
+      {/* Bottom Nav */}
+      <View style={[s.nav,{backgroundColor:t.card,borderTopColor:t.border}]}>
+        {TABS.map(tb=>{
+          const active = tab === tb.id;
+          return (
+            <TouchableOpacity
+              key={tb.id}
+              onPress={()=>setTab(tb.id)}
+              style={s.navBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.navIcon, active && s.navIconActive]}>{tb.icon}</Text>
+              <Text style={[s.navLabel,{color:active?'#7C3AED':t.textMuted},{fontWeight:active?'800':'600'}]}>
+                {tb.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Toast */}
+      {toast && (
+        <TouchableOpacity
+          style={s.toast}
+          onPress={()=>setToast(null)}
+          activeOpacity={0.9}
+        >
+          <Text style={{fontSize:26}}>{toast.icon}</Text>
+          <View style={{flex:1}}>
+            <Text style={s.toastTitle}>{toast.title}</Text>
+            {toast.body && <Text style={s.toastBody}>{toast.body}</Text>}
+          </View>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  nav:       { flexDirection:'row', borderTopWidth:1, paddingBottom:8, paddingTop:6, shadowColor:'#000', shadowOffset:{width:0,height:-2}, shadowOpacity:0.06, shadowRadius:8, elevation:8 },
+  navBtn:    { flex:1, alignItems:'center', gap:2, paddingVertical:4 },
+  navIcon:   { fontSize:22 },
+  navIconActive:{ fontSize:24, transform:[{translateY:-2}] },
+  navLabel:  { fontSize:10 },
+  toast:     { position:'absolute', top:12, left:'5%', width:'90%', backgroundColor:'#7C3AED', borderRadius:16, padding:14, flexDirection:'row', alignItems:'center', gap:10, shadowColor:'#7C3AED', shadowOffset:{width:0,height:8}, shadowOpacity:0.5, shadowRadius:20, elevation:16, zIndex:500 },
+  toastTitle:{ color:'#fff', fontWeight:'800', fontSize:13 },
+  toastBody: { color:'rgba(255,255,255,.9)', fontSize:12, marginTop:2 },
+});
+` },
+  { path: "src/screens/AddScreen.js", content: `import React, { useState, useRef } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  Image, StyleSheet, Alert, ActivityIndicator,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Speech from 'expo-speech';
+import { T } from '../theme';
+import { LOADING_MSGS, randMsg, getImageUrl, todayStr } from '../state';
+import { aiGenerateWord } from '../services/ai';
+import { Card, Btn, Inp, ErrBox, Elephant, SpeakBtn } from '../components';
+
+export default function AddScreen({ state, dispatch, dk }) {
+  const t = T(dk);
+  const [input, setInput]       = useState('');
+  const [autoImg, setAutoImg]   = useState(true);
+  const [loading, setLoading]   = useState(false);
+  const [loadMsg, setLoadMsg]   = useState('');
+  const [error, setError]       = useState('');
+  const [generated, setGenerated] = useState([]);
+  const fileRefs = useRef([]);
+  const msgInterval = useRef(null);
+
+  const startMsgCycle = () => {
+    setLoadMsg(randMsg());
+    msgInterval.current = setInterval(()=>setLoadMsg(randMsg()), 2000);
+  };
+  const stopMsgCycle = () => {
+    if (msgInterval.current) { clearInterval(msgInterval.current); msgInterval.current=null; }
+  };
+
+  const generate = async () => {
+    const words = input.split(',').map(w=>w.trim()).filter(Boolean);
+    if (!words.length) { setError('أدخل كلمة على الأقل'); return; }
+    if (!state.settings.groqApiKey) { Alert.alert('⚠️','أضف مفتاح Groq API في الإعدادات أولاً'); return; }
+    setError(''); setLoading(true); startMsgCycle();
+    const results = [];
+    for (const word of words) {
+      try {
+        const c = await aiGenerateWord(word, state.profile.language, state.settings);
+        results.push({
+          id:\`\${Date.now()}-\${Math.random()}\`,
+          word, language:state.profile.language,
+          definition:c.definition,
+          examples:c.examples||['',''],
+          imageUrl: autoImg ? getImageUrl(word, c.definition) : '',
+          mastered:false, hard:false,
+          correctStreak:0, incorrectStreak:0,
+          difficulty:'medium',
+          nextReview:todayStr(),
+          addedDate:new Date().toISOString(),
+        });
+      } catch(e) {
+        setError(\`❌ خطأ في "\${word}": \${e.message}\`);
+        break;
+      }
+    }
+    stopMsgCycle(); setGenerated(results); setLoading(false);
+  };
+
+  const save = () => {
+    dispatch({ type:'ADD_WORDS', words:generated });
+    setGenerated([]); setInput('');
+    Alert.alert('🎉',\`تم حفظ \${generated.length} كلمة!\`);
+  };
+
+  const pickImage = async (idx) => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes:ImagePicker.MediaTypeOptions.Images,
+      allowsEditing:true, aspect:[16,9], quality:0.7,
+    });
+    if (!res.canceled && res.assets[0]) {
+      setGenerated(p=>p.map((x,i)=>i===idx?{...x,imageUrl:res.assets[0].uri}:x));
+    }
+  };
+
+  return (
+    <ScrollView style={[s.container,{backgroundColor:t.bg}]} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <Text style={[s.title,{color:t.text}]}>➕ Add New Words</Text>
+
+      {/* Elephant tip */}
+      <View style={s.tipRow}>
+        <Elephant size={52}/>
+        <View style={[s.tipBubble,{backgroundColor:t.pLight,borderColor:dk?'#3D1F7A':'#DDD6FE'}]}>
+          <Text style={[s.tipText,{color:t.primary}]}>
+            Drop in your words and I'll generate definitions, examples, and images automatically! 🧠
+          </Text>
+        </View>
+      </View>
+
+      <Card dk={dk} style={s.inputCard}>
+        <Text style={[s.label,{color:t.textMuted}]}>الكلمة أو عدة كلمات مفصولة بفاصلة</Text>
+        <Inp value={input} onChange={setInput} placeholder="مثال: apple, curious, ephemeral" dk={dk} style={{marginBottom:12}}/>
+
+        {/* Auto image toggle */}
+        <View style={[s.toggleRow,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+          <Text style={{ fontSize:22 }}>🖼️</Text>
+          <View style={{ flex:1 }}>
+            <Text style={[s.toggleLabel,{color:t.text}]}>توليد صورة تلقائياً</Text>
+            <Text style={[s.toggleSub,{color:t.green}]}>✨ مجاني — Pollinations.ai</Text>
+          </View>
+          <TouchableOpacity
+            onPress={()=>setAutoImg(v=>!v)}
+            style={[s.switchBox,{backgroundColor:autoImg?'#7C3AED':'#CCC'}]}
+          >
+            <View style={[s.switchThumb,{alignSelf:autoImg?'flex-end':'flex-start'}]}/>
+          </TouchableOpacity>
+        </View>
+
+        <ErrBox msg={error} dk={dk}/>
+        <Btn onPress={generate} disabled={loading||!input.trim()} full size="lg">
+          {loading ? '⏳ جاري التوليد...' : '✦ توليد بالذكاء الاصطناعي'}
+        </Btn>
+      </Card>
+
+      {loading && (
+        <View style={[s.spinner,{backgroundColor:t.pLight}]}>
+          <Elephant size={56}/>
+          <ActivityIndicator color="#7C3AED" size="large" style={{marginTop:8}}/>
+          <Text style={[s.spinnerTxt,{color:t.primary}]}>{loadMsg}</Text>
+        </View>
+      )}
+
+      {generated.length > 0 && (
+        <View>
+          {generated.map((r,idx)=>(
+            <Card key={r.id} dk={dk} style={s.wordCard}>
+              {/* Header */}
+              <View style={s.wordCardHeader}>
+                <Text style={[s.wordTitle,{color:t.text}]}>{r.word}</Text>
+                <SpeakBtn onPress={()=>Speech.speak(r.word,{language:r.language})} dk={dk}/>
+              </View>
+
+              {/* Image */}
+              {r.imageUrl ? (
+                <Image source={{uri:r.imageUrl}} style={s.wordImg} resizeMode="cover"/>
+              ) : null}
+              <View style={s.imgBtns}>
+                <Btn onPress={()=>setGenerated(p=>p.map((x,i)=>i===idx?{...x,imageUrl:getImageUrl(x.word,x.definition,Date.now())}:x))} variant="ghost" size="sm" dk={dk}>🔄 صورة جديدة</Btn>
+                <Btn onPress={()=>pickImage(idx)} variant="white" size="sm" dk={dk}>📤 رفع من الجهاز</Btn>
+              </View>
+
+              {/* Definition */}
+              <Text style={[s.label,{color:t.textMuted,marginTop:10}]}>التعريف</Text>
+              <Inp value={r.definition} onChange={v=>setGenerated(p=>p.map((x,i)=>i===idx?{...x,definition:v}:x))} rows={2} dk={dk} style={{marginBottom:10}}/>
+
+              {/* Examples */}
+              {r.examples.map((ex,ei)=>(
+                <View key={ei}>
+                  <Text style={[s.label,{color:t.textMuted}]}>مثال {ei+1}</Text>
+                  <Inp value={ex} onChange={v=>{const e=[...r.examples];e[ei]=v;setGenerated(p=>p.map((x,i)=>i===idx?{...x,examples:e}:x));}} dk={dk} style={{marginBottom:8}}/>
+                </View>
+              ))}
+            </Card>
+          ))}
+          <Btn onPress={save} full size="lg" variant="gold">💾 حفظ {generated.length} كلمة</Btn>
+        </View>
+      )}
+      <View style={{height:32}}/>
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container:   { flex:1 },
+  content:     { padding:20 },
+  title:       { fontSize:22, fontWeight:'900', marginBottom:18 },
+  tipRow:      { flexDirection:'row', gap:14, alignItems:'flex-start', marginBottom:16 },
+  tipBubble:   { flex:1, borderRadius:16, borderBottomLeftRadius:4, padding:12, borderWidth:1.5 },
+  tipText:     { fontSize:13, fontWeight:'700', lineHeight:22 },
+  inputCard:   { marginBottom:12 },
+  label:       { fontSize:12, fontWeight:'700', textTransform:'uppercase', letterSpacing:1, marginBottom:6 },
+  toggleRow:   { flexDirection:'row', alignItems:'center', gap:10, padding:10, borderRadius:12, marginBottom:12, borderWidth:1 },
+  toggleLabel: { fontSize:14, fontWeight:'700' },
+  toggleSub:   { fontSize:11 },
+  switchBox:   { width:50, height:28, borderRadius:14, justifyContent:'center', paddingHorizontal:3 },
+  switchThumb: { width:22, height:22, borderRadius:11, backgroundColor:'#fff', shadowColor:'#000', shadowOffset:{width:0,height:1}, shadowOpacity:.2, elevation:2 },
+  spinner:     { alignItems:'center', padding:36, borderRadius:16, marginBottom:12 },
+  spinnerTxt:  { fontWeight:'700', marginTop:10, fontSize:14, textAlign:'center' },
+  wordCard:    { marginBottom:14 },
+  wordCardHeader:{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 },
+  wordTitle:   { fontSize:20, fontWeight:'900' },
+  wordImg:     { width:'100%', height:140, borderRadius:10, marginBottom:10 },
+  imgBtns:     { flexDirection:'row', gap:8, marginBottom:8 },
+});
+` },
+  { path: "src/screens/HomeScreen.js", content: `import React from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { T } from '../theme';
+import { LEVELS, getLevelFromXP, getDueWords, DAILY_CARDS } from '../state';
+import { Card, Btn, Elephant } from '../components';
+
+export default function HomeScreen({ state, dispatch, onNav, dk }) {
+  const t = T(dk);
+  const { profile, words } = state;
+  const due = getDueWords(words);
+  const lv  = getLevelFromXP(profile.xp);
+  const lvl = LEVELS[lv] || LEVELS[0];
+  const thr = [0, 200, 500, 1000, 2000];
+  const cur = thr[lv] || 0, nxt = thr[lv+1] || cur+500;
+  const pct = Math.min(((profile.xp - cur) / (nxt - cur)) * 100, 100);
+
+  return (
+    <ScrollView style={[s.container, {backgroundColor:t.bg}]} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
+      {/* Header */}
+      <LinearGradient colors={['#7C3AED','#5B21B6']} style={s.header}>
+        <View style={s.headerRow}>
+          <View>
+            <Text style={s.headerName}>Hey {profile.name}! 👋</Text>
+            <Text style={s.headerLevel}>{lvl.icon} {lvl.name}</Text>
+          </View>
+          <Text style={s.streak}>🔥 {profile.streak}</Text>
+        </View>
+      </LinearGradient>
+
+      <View style={s.body}>
+        {/* XP Bar */}
+        <Card dk={dk} style={{ marginBottom:12 }}>
+          <View style={s.xpRow}>
+            <Text style={[s.xpTxt, {color:t.textMuted}]}>⭐ {profile.xp} XP</Text>
+            <Text style={[s.xpTxt, {color:t.textMuted}]}>المستوى {lv+1}/4</Text>
+          </View>
+          <View style={[s.barBg, {backgroundColor:t.border}]}>
+            <View style={[s.barFill, {width:\`\${pct}%\`}]}/>
+          </View>
+        </Card>
+
+        {/* Daily mission */}
+        <LinearGradient
+          colors={due.length > 0 ? ['#7C3AED','#5B21B6'] : ['#10B981','#059669']}
+          style={s.missionCard}
+        >
+          <View style={s.missionRow}>
+            <View style={{ flex:1 }}>
+              <Text style={s.missionTitle}>{due.length > 0 ? '📚 Daily mission!' : '✅ You crushed it!'}</Text>
+              <Text style={s.missionSub}>{due.length > 0 ? \`\${Math.min(due.length, DAILY_CARDS)} cards ready for review\` : 'All done for today 🎉'}</Text>
+            </View>
+            <Elephant size={52}/>
+          </View>
+          {due.length > 0 && (
+            <Btn onPress={()=>onNav('review')} variant="white" full size="md" dk={dk} style={{ marginTop:14 }}>
+              Start review! ⚡
+            </Btn>
+          )}
+        </LinearGradient>
+
+        {/* Stats row */}
+        <View style={s.statsRow}>
+          {[
+            {l:'Words',   v:words.length,                      icon:'📝', c:t.blue  },
+            {l:'Mastered',v:words.filter(w=>w.mastered).length,icon:'🏅', c:t.green },
+            {l:'Hard',    v:words.filter(w=>w.hard).length,    icon:'💪', c:t.red   },
+          ].map(stat=>(
+            <Card key={stat.l} dk={dk} style={{ flex:1, alignItems:'center', padding:14 }}>
+              <Text style={{ fontSize:22, marginBottom:4 }}>{stat.icon}</Text>
+              <Text style={{ fontSize:20, fontWeight:'900', color:stat.c }}>{stat.v}</Text>
+              <Text style={{ fontSize:11, color:t.textMuted, marginTop:2 }}>{stat.l}</Text>
+            </Card>
+          ))}
+        </View>
+
+        {/* Hint points */}
+        <Card dk={dk} style={s.hintCard}>
+          <View>
+            <Text style={[s.hintLabel, {color:t.textSub}]}>💡 Hint points</Text>
+            <Text style={[s.hintVal, {color:t.gold}]}>{profile.hintPoints}</Text>
+          </View>
+          <Text style={[s.hintSub, {color:t.textMuted}]}>Refreshes daily</Text>
+        </Card>
+
+        {/* Empty state */}
+        {words.length === 0 && (
+          <Card dk={dk} style={[s.emptyCard, {borderColor:t.gold, backgroundColor:t.goLight}]}>
+            <Text style={{ fontSize:44, marginBottom:8, textAlign:'center' }}>✨</Text>
+            <Text style={[s.emptyTitle, {color:t.gold}]}>Add your first word!</Text>
+            <Btn onPress={()=>onNav('add')} variant="gold" size="sm" style={{ marginTop:12 }}>
+              Add a word ➜
+            </Btn>
+          </Card>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex:1 },
+  content:   { paddingBottom:24 },
+  header:    { paddingTop:56, paddingBottom:24, paddingHorizontal:20 },
+  headerRow: { flexDirection:'row', justifyContent:'space-between', alignItems:'center' },
+  headerName:{ fontSize:21, fontWeight:'900', color:'#fff' },
+  headerLevel:{ fontSize:13, color:'rgba(255,255,255,.85)', marginTop:2 },
+  streak:    { fontSize:20, fontWeight:'900', color:'#FFD700' },
+  body:      { padding:16, gap:12 },
+  xpRow:     { flexDirection:'row', justifyContent:'space-between', marginBottom:6 },
+  xpTxt:     { fontSize:12, fontWeight:'600' },
+  barBg:     { height:10, borderRadius:10, overflow:'hidden' },
+  barFill:   { height:'100%', backgroundColor:'#7C3AED', borderRadius:10 },
+  missionCard:{ borderRadius:18, padding:16, marginBottom:0 },
+  missionRow:{ flexDirection:'row', alignItems:'center' },
+  missionTitle:{ fontSize:17, fontWeight:'900', color:'#fff', marginBottom:6 },
+  missionSub:{ fontSize:14, color:'rgba(255,255,255,.9)' },
+  statsRow:  { flexDirection:'row', gap:10 },
+  hintCard:  { flexDirection:'row', alignItems:'center', justifyContent:'space-between' },
+  hintLabel: { fontSize:13, fontWeight:'700' },
+  hintVal:   { fontSize:22, fontWeight:'900', marginTop:2 },
+  hintSub:   { fontSize:12 },
+  emptyCard: { borderWidth:2, borderStyle:'dashed', alignItems:'center', padding:20 },
+  emptyTitle:{ fontSize:18, fontWeight:'900', textAlign:'center' },
+});
+` },
+  { path: "src/screens/OnboardingScreen.js", content: `import React, { useState } from 'react';
+import {
+  View, Text, TouchableOpacity, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Platform,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Btn, Inp, Elephant } from '../components';
+import { LANGUAGES } from '../state';
+
+export default function OnboardingScreen({ onDone }) {
+  const [step, setStep] = useState(0);
+  const [name, setName] = useState('');
+  const [lang, setLang] = useState('en');
+
+  const steps = [
+    // Step 0 — Welcome
+    <View key={0} style={s.stepCenter}>
+      <Elephant size={90}/>
+      <Text style={s.heroTitle}>Hey, welcome to Nader! 🎉</Text>
+      <Text style={s.heroSub}>Your AI-powered vocab buddy — let's build your word game 🚀</Text>
+      <Btn onPress={()=>setStep(1)} full size="lg">Let's go! 🐘</Btn>
+    </View>,
+
+    // Step 1 — Name
+    <KeyboardAvoidingView key={1} behavior={Platform.OS==='ios'?'padding':undefined} style={s.stepCenter}>
+      <Elephant size={60}/>
+      <Text style={s.stepTitle}>What's your name?</Text>
+      <Inp
+        value={name} onChange={setName}
+        placeholder="Type your name..."
+        style={{ textAlign:'center', fontSize:18, fontWeight:'700', marginBottom:20, width:'100%' }}
+        autoFocus
+      />
+      <Btn onPress={()=>setStep(2)} disabled={!name.trim()} full size="lg">Next ➜</Btn>
+    </KeyboardAvoidingView>,
+
+    // Step 2 — Language
+    <View key={2} style={{ width:'100%' }}>
+      <Text style={[s.stepTitle, { marginBottom:16 }]}>What language are you learning?</Text>
+      <View style={s.langGrid}>
+        {LANGUAGES.map(l=>(
+          <TouchableOpacity
+            key={l.code}
+            onPress={()=>setLang(l.code)}
+            style={[s.langCard, lang===l.code && s.langCardActive]}
+          >
+            <Text style={{ fontSize:26, marginBottom:4 }}>{l.flag}</Text>
+            <Text style={[s.langName, lang===l.code && { color:'#6D28D9' }]}>{l.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Btn onPress={()=>setStep(3)} full size="lg" style={{ marginTop:16 }}>Next ➜</Btn>
+    </View>,
+
+    // Step 3 — Done
+    <View key={3} style={s.stepCenter}>
+      <Text style={{ fontSize:72, marginBottom:14 }}>🎊</Text>
+      <Text style={s.heroTitle}>You're all set, {name}! 🎉</Text>
+      <Text style={s.heroSub}>
+        Your elephant buddy 🐘 is ready to help you crush{' '}
+        <Text style={{ fontWeight:'900' }}>{LANGUAGES.find(l=>l.code===lang)?.name}</Text>!
+      </Text>
+      <Btn onPress={()=>onDone({name,language:lang})} full size="lg">Start learning! 🚀</Btn>
+    </View>,
+  ];
+
+  return (
+    <LinearGradient colors={['#7C3AED','#5B21B6','#4C1D95']} style={s.container}>
+      <View style={s.card}>
+        {/* Progress dots */}
+        <View style={s.dots}>
+          {[0,1,2,3].map(i=>(
+            <View key={i} style={[s.dot, i<=step && s.dotActive, i===step && s.dotCurrent]}/>
+          ))}
+        </View>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {steps[step]}
+        </ScrollView>
+      </View>
+    </LinearGradient>
+  );
+}
+
+const s = StyleSheet.create({
+  container:    { flex:1, alignItems:'center', justifyContent:'center', padding:20 },
+  card:         { width:'100%', maxWidth:400, backgroundColor:'#fff', borderRadius:28, overflow:'hidden', maxHeight:'90%' },
+  dots:         { flexDirection:'row', justifyContent:'center', gap:7, paddingTop:18, paddingBottom:0 },
+  dot:          { height:7, width:7, borderRadius:4, backgroundColor:'#EEE' },
+  dotActive:    { backgroundColor:'#C4B5FD' },
+  dotCurrent:   { width:22, backgroundColor:'#7C3AED' },
+  scroll:       { padding:28, paddingTop:20 },
+  stepCenter:   { alignItems:'center', gap:16, width:'100%' },
+  heroTitle:    { fontSize:26, fontWeight:'900', color:'#1A1A2E', textAlign:'center', marginTop:10 },
+  heroSub:      { fontSize:15, color:'#888', textAlign:'center', lineHeight:26, marginBottom:16 },
+  stepTitle:    { fontSize:20, fontWeight:'900', color:'#1A1A2E', textAlign:'center' },
+  langGrid:     { flexDirection:'row', flexWrap:'wrap', gap:10 },
+  langCard:     { width:'48%', padding:13, borderRadius:13, alignItems:'center', borderWidth:2.5, borderColor:'#E8E4F8', backgroundColor:'#fff' },
+  langCardActive:{ borderColor:'#7C3AED', backgroundColor:'#F5F3FF' },
+  langName:     { fontSize:13, fontWeight:'700', color:'#666' },
+});
+` },
+  { path: "src/screens/ParagraphChallenge.js", content: `import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { T } from '../theme';
+import { todayStr } from '../state';
+import { aiEvaluateParagraph } from '../services/ai';
+import { Card, Btn, Inp, Spinner } from '../components';
+
+export default function ParagraphChallenge({ session, state, dispatch, onComplete, dk }) {
+  const t = T(dk);
+  const [text, setText]       = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  const minWords = Math.min(4, session.length);
+  const used = session.filter(w => text.toLowerCase().includes(w.word.toLowerCase()));
+  const passed = result && result.score >= 5;
+
+  const evaluate = async () => {
+    setLoading(true);
+    try {
+      const r = await aiEvaluateParagraph(text, session.map(w=>w.word), state.profile.language, state.settings);
+      setResult(r);
+    } catch {
+      setResult({ score:6, feedback:'تعذّر التقييم.', corrections:[], encouragement:'🎉 عمل رائع!' });
+    }
+    setLoading(false);
+  };
+
+  const saveNote = () => {
+    dispatch({ type:'SAVE_NOTE', note:{ date:todayStr(), paragraph:text, score:result.score, feedback:result.feedback, corrections:result.corrections||[], words:session.map(w=>w.word) } });
+    setNoteSaved(true);
+  };
+
+  const finish = () => { dispatch({ type:'COMPLETE_SESSION' }); onComplete(); };
+
+  const needMore = minWords - used.length;
+  const btnLabel = loading
+    ? '🐘 الفيل يقيّم...'
+    : needMore > 0
+    ? \`أضف \${needMore} كلمة أخرى\`
+    : '🤖 تقييم الفقرة';
+
+  return (
+    <ScrollView style={[s.container,{backgroundColor:t.bg}]} keyboardShouldPersistTaps="handled" contentContainerStyle={s.content}>
+      {/* Header */}
+      <View style={s.headerArea}>
+        <Text style={s.bossEmoji}>⚔️</Text>
+        <Text style={[s.title,{color:t.text}]}>تحدي الفقرة!</Text>
+        <Text style={[s.sub,{color:t.textSub}]}>
+          {session.length <= 4 ? 'استخدم جميع الكلمات في فقرة واحدة' : 'استخدم 4 كلمات على الأقل في فقرة واحدة'}
+        </Text>
+      </View>
+
+      {/* Word chips */}
+      <View style={s.chips}>
+        {session.map(w => {
+          const isUsed = text.toLowerCase().includes(w.word.toLowerCase());
+          return (
+            <View key={w.id} style={[s.chip, isUsed && s.chipUsed]}>
+              <Text style={[s.chipTxt, isUsed && s.chipTxtUsed]}>{isUsed ? '✓ ' : ''}{w.word}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Text area */}
+      <Card dk={dk} style={s.inputCard}>
+        <Inp value={text} onChange={setText} rows={5} dk={dk}
+          placeholder="اكتب فقرتك... القصص الخيالية مقبولة 🐉"
+          style={{ marginBottom:8 }}
+        />
+        <View style={s.statsRow}>
+          <Text style={[s.statTxt,{color:t.textMuted}]}>مستخدمة: {used.length}/{minWords}</Text>
+          <Text style={[s.statTxt,{color:t.textMuted}]}>{text.trim().split(/\\s+/).filter(Boolean).length} كلمة</Text>
+        </View>
+      </Card>
+
+      {!passed && (
+        <Btn onPress={evaluate} disabled={loading || used.length < minWords} full style={{ marginBottom:12 }}>
+          {btnLabel}
+        </Btn>
+      )}
+
+      {loading && <Spinner message="الفيل يقيّم القواعد النحوية... 🤓" dk={dk}/>}
+
+      {result && (
+        <Card dk={dk} style={[s.resultCard, passed ? {backgroundColor:t.gLight,borderColor:t.green} : {backgroundColor:t.rLight,borderColor:t.red}]}>
+          <View style={s.resultTop}>
+            <Text style={{fontSize:52}}>{passed ? '🏆' : '💪'}</Text>
+            <Text style={[s.score, {color:passed?t.green:t.red}]}>{result.score}<Text style={[s.scoreOf,{color:t.textMuted}]}>/10</Text></Text>
+            <Text style={[s.feedback,{color:t.text}]}>{result.feedback}</Text>
+            <Text style={[s.encouragement,{color:passed?t.green:t.red,fontWeight:'700'}]}>{result.encouragement}</Text>
+          </View>
+
+          {(result.corrections||[]).length > 0 && (
+            <View style={[s.corrections,{backgroundColor:'rgba(255,255,255,.55)'}]}>
+              <Text style={[s.correctionsTitle,{color:t.text}]}>📝 التصحيحات:</Text>
+              {result.corrections.map((c,i)=>(
+                <Text key={i} style={[s.correctionItem,{color:t.text}]}>• {c}</Text>
+              ))}
+            </View>
+          )}
+
+          {(result.corrections||[]).length > 0 && (
+            <Btn onPress={noteSaved ? undefined : saveNote} variant={noteSaved?'green':'white'} full size="sm" dk={dk}>
+              {noteSaved ? '✅ تم حفظ الملاحظات!' : '💾 احفظ التصحيحات كملاحظة'}
+            </Btn>
+          )}
+        </Card>
+      )}
+
+      {passed
+        ? <Btn onPress={finish} full size="lg" variant="gold" style={{marginTop:12}}>🎊 إنهاء الجلسة! (+50 XP)</Btn>
+        : result && !passed && (
+          <Text style={[s.retryHint,{color:t.textMuted}]}>تحتاج 5/10 للاجتياز. عدّل فقرتك وحاول مجدداً! 💪</Text>
+        )
+      }
+
+      <View style={{height:32}}/>
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container:   { flex:1 },
+  content:     { padding:20 },
+  headerArea:  { alignItems:'center', marginBottom:18 },
+  bossEmoji:   { fontSize:52, marginBottom:8 },
+  title:       { fontSize:22, fontWeight:'900', textAlign:'center' },
+  sub:         { fontSize:13, textAlign:'center', marginTop:4 },
+  chips:       { flexDirection:'row', flexWrap:'wrap', gap:8, marginBottom:14 },
+  chip:        { paddingVertical:5, paddingHorizontal:13, borderRadius:20, backgroundColor:'#E8E4F8' },
+  chipUsed:    { backgroundColor:'#7C3AED' },
+  chipTxt:     { fontSize:13, fontWeight:'700', color:'#9999BB' },
+  chipTxtUsed: { color:'#fff' },
+  inputCard:   { marginBottom:12 },
+  statsRow:    { flexDirection:'row', justifyContent:'space-between' },
+  statTxt:     { fontSize:12 },
+  resultCard:  { borderWidth:2, marginBottom:14 },
+  resultTop:   { alignItems:'center', marginBottom:14, gap:6 },
+  score:       { fontSize:36, fontWeight:'900' },
+  scoreOf:     { fontSize:18, fontWeight:'600' },
+  feedback:    { fontSize:15, textAlign:'center', marginTop:4 },
+  encouragement:{ fontSize:14, textAlign:'center' },
+  corrections: { borderRadius:12, padding:12, marginBottom:12 },
+  correctionsTitle:{ fontSize:13, fontWeight:'800', marginBottom:8 },
+  correctionItem:{ fontSize:13, marginTop:4, lineHeight:20 },
+  retryHint:   { textAlign:'center', fontSize:13, marginTop:12 },
+});
+` },
+  { path: "src/screens/ReviewScreen.js", content: `import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, Image, Alert, Animated,
+} from 'react-native';
+import * as Speech from 'expo-speech';
+import { T } from '../theme';
+import {
+  getDueWords, DAILY_CARDS, MASTERED_THRESHOLD, HARD_THRESHOLD,
+  nextReviewDate, similarity, todayStr,
+} from '../state';
+import { aiReviewContent } from '../services/ai';
+import { Card, Btn, Inp, Spinner, Elephant } from '../components';
+import ParagraphChallenge from './ParagraphChallenge';
+
+const speak = (text, lang) => Speech.speak(text, { language:lang, rate:0.9 });
+
+const speakWithPause = (text, lang) => {
+  Speech.stop();
+  const parts = text.split('___');
+  if (parts.length === 1) { speak(text, lang); return; }
+  let i = 0;
+  const next = () => {
+    if (i >= parts.length) return;
+    const chunk = parts[i++];
+    if (chunk.trim()) {
+      Speech.speak(chunk, { language:lang, rate:0.9, onDone:() => { if(i<parts.length) setTimeout(next,800); else next(); } });
+    } else {
+      if (i < parts.length) setTimeout(next, 800); else next();
+    }
+  };
+  next();
+};
+
+export default function ReviewScreen({ state, dispatch, onComplete, dk }) {
+  const t = T(dk);
+  const [session,    setSession]    = useState([]);
+  const [idx,        setIdx]        = useState(0);
+  const [cardData,   setCardData]   = useState(null);
+  const [loadingCard,setLoadingCard]= useState(false);
+  const [answer,     setAnswer]     = useState('');
+  const [revealed,   setRevealed]   = useState(false);
+  const [verdict,    setVerdict]    = useState(null);
+  const [hintLetter, setHintLetter] = useState(false);
+  const [hintLength, setHintLength] = useState(false);
+  const [phase,      setPhase]      = useState('review'); // 'review' | 'paragraph'
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const hintUsed  = useRef({ letter:false, length:false });
+  const sessionLog= useRef({ correct:0, total:0, startTime:Date.now() });
+
+  const loadCard = useCallback(async (word, settings) => {
+    setLoadingCard(true); setAnswer(''); setRevealed(false); setVerdict(null);
+    setHintLetter(false); setHintLength(false);
+    hintUsed.current = { letter:false, length:false };
+    try {
+      if (!settings.groqApiKey) throw new Error('no key');
+      const c = await aiReviewContent(word.word, word.language, settings);
+      setCardData(c);
+    } catch {
+      const blank = s => s.replace(new RegExp(word.word,'gi'),'___');
+      setCardData({ definition:blank(word.definition||''), examples:(word.examples||[]).map(blank) });
+    }
+    setLoadingCard(false);
+  }, []);
+
+  useEffect(() => {
+    const due = getDueWords(state.words).slice(0, DAILY_CARDS);
+    setSession(due);
+    if (due.length > 0) loadCard(due[0], state.settings);
+  }, []);
+
+  const shake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim,{toValue:10,duration:80,useNativeDriver:true}),
+      Animated.timing(shakeAnim,{toValue:-10,duration:80,useNativeDriver:true}),
+      Animated.timing(shakeAnim,{toValue:6,duration:60,useNativeDriver:true}),
+      Animated.timing(shakeAnim,{toValue:0,duration:60,useNativeDriver:true}),
+    ]).start();
+  };
+
+  const checkAnswer = () => {
+    const w = session[idx];
+    const sim = similarity(answer, w.word);
+    const v = sim>=0.99 ? 'correct' : sim>=0.8 ? 'close' : 'wrong';
+    if (v === 'wrong') shake();
+    setVerdict(v); setRevealed(true);
+    sessionLog.current.total++;
+    if (v !== 'wrong') sessionLog.current.correct++;
+    setTimeout(() => speak(w.word, w.language), 700);
+  };
+
+  const rate = async (difficulty) => {
+    let w = { ...session[idx] };
+    const correct = verdict==='correct' || verdict==='close';
+    if (correct) {
+      w.correctStreak = (w.correctStreak||0)+1; w.incorrectStreak = 0;
+      if (w.correctStreak >= MASTERED_THRESHOLD) w.mastered = true;
+    } else {
+      w.incorrectStreak = (w.incorrectStreak||0)+1; w.correctStreak = 0;
+      if (w.incorrectStreak >= HARD_THRESHOLD) w.hard = true;
+    }
+    w.difficulty = difficulty;
+    w.nextReview = nextReviewDate(difficulty, w.correctStreak);
+    dispatch({ type:'UPDATE_WORD', word:w });
+    dispatch({ type:'AWARD_XP', amount:correct?10:2 });
+
+    if (idx+1 >= session.length) {
+      dispatch({ type:'LOG_SESSION', session:{ date:todayStr(), wordIds:session.map(x=>x.id), correct:sessionLog.current.correct, total:sessionLog.current.total, duration:Math.round((Date.now()-sessionLog.current.startTime)/1000) } });
+      setPhase('paragraph');
+    } else {
+      const ni = idx+1;
+      setIdx(ni); loadCard(session[ni], state.settings);
+    }
+  };
+
+  const useLetterHint = () => {
+    if (hintUsed.current.letter) return;
+    if ((state.profile.hintPoints||0) < 5) { Alert.alert('','Not enough hint points! (need 5)'); return; }
+    hintUsed.current.letter = true;
+    dispatch({ type:'SPEND_HINTS', amount:5 });
+    setHintLetter(true);
+  };
+
+  const useLengthHint = () => {
+    if (hintUsed.current.length) return;
+    if ((state.profile.hintPoints||0) < 3) { Alert.alert('','Not enough hint points! (need 3)'); return; }
+    hintUsed.current.length = true;
+    dispatch({ type:'SPEND_HINTS', amount:3 });
+    setHintLength(true);
+  };
+
+  if (session.length === 0) return (
+    <View style={[s.empty,{backgroundColor:t.bg}]}>
+      <Text style={s.emptyEmoji}>🎉</Text>
+      <Text style={[s.emptyTitle,{color:t.text}]}>Nothing to review today!</Text>
+      <Btn onPress={onComplete} style={{marginTop:16}}>Back home</Btn>
+    </View>
+  );
+
+  if (phase === 'paragraph') return (
+    <ParagraphChallenge session={session} state={state} dispatch={dispatch} onComplete={onComplete} dk={dk}/>
+  );
+
+  const word = session[idx];
+  const prog = (idx / session.length) * 100;
+
+  return (
+    <ScrollView style={[s.container,{backgroundColor:t.bg}]} keyboardShouldPersistTaps="handled">
+      {/* Progress bar */}
+      <View style={s.progressArea}>
+        <TouchableOpacity onPress={onComplete}>
+          <Text style={[s.backBtn,{color:t.textSub}]}>←</Text>
+        </TouchableOpacity>
+        <View style={{ flex:1 }}>
+          <View style={s.progRow}>
+            <Text style={[s.progTxt,{color:t.textSub}]}>البطاقة {idx+1}/{session.length}</Text>
+            <Text style={[s.progTxt,{color:t.textSub}]}>+10 XP ⭐</Text>
+          </View>
+          <View style={[s.barBg,{backgroundColor:t.border}]}>
+            <View style={[s.barFill,{width:\`\${prog}%\`}]}/>
+          </View>
+        </View>
+      </View>
+
+      <View style={s.body}>
+        {/* Card */}
+        <Card dk={dk} style={s.flashcard}>
+          {loadingCard ? (
+            <View style={s.loadingCard}>
+              <Elephant size={56}/>
+              <Text style={[s.loadingTxt,{color:t.primary}]}>الفيل يولّد محتوى جديداً...</Text>
+            </View>
+          ) : cardData && (
+            <>
+              {word.imageUrl ? (
+                <Image source={{uri:word.imageUrl}} style={s.cardImg} resizeMode="cover"/>
+              ) : null}
+
+              <TouchableOpacity
+                onPress={()=>speakWithPause(cardData.definition, word.language)}
+                style={[s.textBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}
+              >
+                <Text style={[s.defText,{color:t.text}]}>📖 {cardData.definition}</Text>
+                <Text style={s.speakIcon}>🔊</Text>
+              </TouchableOpacity>
+
+              {(cardData.examples||[]).map((ex,i)=>(
+                <TouchableOpacity key={i}
+                  onPress={()=>speakWithPause(ex, word.language)}
+                  style={[s.textBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}
+                >
+                  <Text style={[s.exText,{color:t.text}]}>💡 {ex}</Text>
+                  <Text style={s.speakIcon}>🔊</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          )}
+        </Card>
+
+        {/* Hints */}
+        {!revealed && (
+          <View style={s.hintsSection}>
+            <View style={s.hintPtsRow}>
+              <Text style={[s.hintPtsTxt,{color:t.gold,backgroundColor:t.goLight}]}>
+                💡 {state.profile.hintPoints} pts left
+              </Text>
+            </View>
+            <View style={s.hintsRow}>
+              <TouchableOpacity
+                onPress={useLetterHint}
+                style={[s.hintBtn, hintLetter && s.hintBtnUsed, {borderColor:t.primary,backgroundColor:t.pLight}]}
+              >
+                {hintLetter
+                  ? <Text style={[s.hintBtnTxt,{color:t.primary}]}>First letter: <Text style={{fontWeight:'900'}}>{word.word[0].toUpperCase()}</Text></Text>
+                  : <Text style={[s.hintBtnTxt,{color:t.primary}]}>💡 First letter (-5 pts)</Text>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={useLengthHint}
+                style={[s.hintBtn, hintLength && s.hintBtnUsed, {borderColor:t.blue,backgroundColor:t.bLight}]}
+              >
+                {hintLength
+                  ? <Text style={[s.hintBtnTxt,{color:t.blue}]}>Length: <Text style={{fontWeight:'900'}}>{word.word.length}</Text></Text>
+                  : <Text style={[s.hintBtnTxt,{color:t.blue}]}>📏 Word length (-3 pts)</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Input / Result */}
+        {!revealed ? (
+          <Animated.View style={{ transform:[{translateX:shakeAnim}] }}>
+            <Card dk={dk}>
+              <Inp
+                value={answer} onChange={setAnswer}
+                placeholder="اكتب الكلمة المخفية..."
+                dk={dk}
+                style={{ textAlign:'center', fontSize:18, fontWeight:'700', marginBottom:12 }}
+                autoFocus
+              />
+              <Btn onPress={checkAnswer} disabled={!answer} full>التحقق ✅</Btn>
+            </Card>
+          </Animated.View>
+        ) : (
+          <Card dk={dk} style={[
+            s.resultCard,
+            verdict==='correct' && {backgroundColor:t.gLight, borderColor:t.green},
+            verdict==='close'   && {backgroundColor:t.goLight,borderColor:t.gold},
+            verdict==='wrong'   && {backgroundColor:t.rLight, borderColor:t.red},
+          ]}>
+            <View style={s.resultTop}>
+              <Text style={s.resultEmoji}>{verdict==='correct'?'🎉':verdict==='close'?'🤏':'❌'}</Text>
+              <Text style={[s.resultTitle,{color:verdict==='correct'?t.green:verdict==='close'?t.gold:t.red}]}>
+                {verdict==='correct'?'Nailed it!':verdict==='close'?'So close!':'Not quite!'}
+              </Text>
+              <TouchableOpacity onPress={()=>speak(word.word,word.language)} style={s.wordRow}>
+                <Text style={[s.wordTxt,{color:t.text}]}>Word: <Text style={{fontWeight:'900'}}>{word.word}</Text></Text>
+                <Text style={{fontSize:16}}>🔊</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[s.rateLabel,{color:t.textMuted}]}>How hard was that to remember?</Text>
+            <View style={s.rateBtns}>
+              {[{l:'Easy',v:'easy',c:t.green,e:'😄'},{l:'Medium',v:'medium',c:t.gold,e:'😐'},{l:'Hard',v:'hard',c:t.red,e:'😓'}].map(({l,v,c,e})=>(
+                <TouchableOpacity key={v} onPress={()=>rate(v)} style={[s.rateBtn,{borderColor:c,backgroundColor:t.card}]}>
+                  <Text style={{fontSize:20}}>{e}</Text>
+                  <Text style={{color:c,fontWeight:'700',fontSize:13}}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Card>
+        )}
+      </View>
+      <View style={{height:32}}/>
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container:    { flex:1 },
+  progressArea: { flexDirection:'row', alignItems:'center', gap:10, paddingHorizontal:20, paddingTop:56, paddingBottom:16 },
+  backBtn:      { fontSize:20 },
+  progRow:      { flexDirection:'row', justifyContent:'space-between', marginBottom:5 },
+  progTxt:      { fontSize:13 },
+  barBg:        { height:10, borderRadius:10, overflow:'hidden' },
+  barFill:      { height:'100%', backgroundColor:'#7C3AED', borderRadius:10 },
+  body:         { padding:16, gap:12 },
+  flashcard:    { minHeight:260 },
+  loadingCard:  { alignItems:'center', padding:40, gap:12 },
+  loadingTxt:   { fontWeight:'700', fontSize:14 },
+  cardImg:      { width:'100%', height:130, borderRadius:12, marginBottom:12 },
+  textBox:      { borderRadius:12, padding:13, marginBottom:10, borderWidth:1, flexDirection:'row', alignItems:'flex-start' },
+  defText:      { fontSize:15, lineHeight:24, flex:1 },
+  exText:       { fontSize:14, lineHeight:22, flex:1 },
+  speakIcon:    { fontSize:18, marginLeft:8 },
+  hintsSection: { gap:8 },
+  hintPtsRow:   { alignItems:'flex-end' },
+  hintPtsTxt:   { fontSize:12, fontWeight:'700', paddingHorizontal:10, paddingVertical:3, borderRadius:12 },
+  hintsRow:     { flexDirection:'row', gap:8 },
+  hintBtn:      { flex:1, padding:10, borderRadius:12, borderWidth:2, borderStyle:'dashed', alignItems:'center' },
+  hintBtnUsed:  { borderStyle:'solid' },
+  hintBtnTxt:   { fontSize:13, fontWeight:'700', textAlign:'center' },
+  resultCard:   { borderWidth:2 },
+  resultTop:    { alignItems:'center', marginBottom:16, gap:4 },
+  resultEmoji:  { fontSize:44 },
+  resultTitle:  { fontSize:18, fontWeight:'900' },
+  wordRow:      { flexDirection:'row', alignItems:'center', gap:6, marginTop:4 },
+  wordTxt:      { fontSize:17 },
+  rateLabel:    { fontSize:13, color:'#999', textAlign:'center', marginBottom:12 },
+  rateBtns:     { flexDirection:'row', gap:8 },
+  rateBtn:      { flex:1, padding:12, borderRadius:12, borderWidth:2, alignItems:'center', gap:4 },
+  empty:        { flex:1, alignItems:'center', justifyContent:'center', padding:40 },
+  emptyEmoji:   { fontSize:72, marginBottom:14 },
+  emptyTitle:   { fontSize:22, fontWeight:'900', textAlign:'center' },
+});
+` },
+  { path: "src/screens/SettingsScreen.js", content: `import React, { useState, useEffect } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, Alert, Switch, TextInput, Modal,
+} from 'react-native';
+import { T } from '../theme';
+import { GROQ_MODELS, NOTIF_MESSAGES, LANGUAGES } from '../state';
+import { testGroqConnection } from '../services/ai';
+import { requestPermission, getPermission, scheduleDaily, cancelAll, sendNow } from '../services/notifications';
+import { Card, Btn, Inp, Toggle, Row } from '../components';
+
+// ── Groq Setup Modal ──────────────────────────────────────────────────────────
+const GroqModal = ({ settings, dk, onClose, onSave, onToast }) => {
+  const t = T(dk);
+  const [model,   setModel]   = useState(settings.aiModel || 'compound-beta');
+  const [key,     setKey]     = useState(settings.groqApiKey || '');
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [result,  setResult]  = useState(null);
+
+  const runTest = async () => {
+    if (!key.trim()) { setResult({ok:false,msg:'أدخل المفتاح أولاً'}); return; }
+    setTesting(true); setResult(null);
+    const r = await testGroqConnection(key.trim(), model);
+    setResult(r);
+    if (r.ok) onToast({ icon:'✅', title:'Groq API يعمل!', body:'تم الاتصال بـ ' + model });
+    setTesting(false);
+  };
+
+  const save = () => {
+    onSave({ groqApiKey:key.trim(), aiModel:model });
+    onClose();
+  };
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={ms.overlay}>
+        <View style={[ms.sheet,{backgroundColor:t.card}]}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Row style={ms.header}>
+              <Text style={[ms.title,{color:t.text}]}>⚡ إعداد Groq API</Text>
+              <TouchableOpacity onPress={onClose}><Text style={{fontSize:20,color:t.textSub}}>✕</Text></TouchableOpacity>
+            </Row>
+
+            {/* Elephant tip */}
+            <Row style={ms.tipRow}>
+              <Text style={{fontSize:48}}>🐘</Text>
+              <View style={[ms.tipBubble,{backgroundColor:t.pLight,borderColor:dk?'#3D1F7A':'#DDD6FE'}]}>
+                <Text style={[ms.tipTxt,{color:t.primary}]}>احصل على مفتاحك المجاني من <Text style={{fontWeight:'900'}}>console.groq.com</Text> — لا يحتاج بطاقة ائتمانية! 🎉</Text>
+              </View>
+            </Row>
+
+            {/* Model picker */}
+            <Text style={[ms.sectionLabel,{color:t.text}]}>اختر الموديل</Text>
+            {GROQ_MODELS.map(m=>(
+              <TouchableOpacity key={m.id} onPress={()=>setModel(m.id)}
+                style={[ms.modelRow,{borderColor:model===m.id?'#7C3AED':t.border,backgroundColor:model===m.id?t.pLight:t.card}]}>
+                <View style={[ms.radio,{borderColor:model===m.id?'#7C3AED':t.border,backgroundColor:model===m.id?'#7C3AED':'transparent'}]}>
+                  {model===m.id && <View style={ms.radioDot}/>}
+                </View>
+                <View style={{flex:1}}>
+                  <Text style={[ms.modelLabel,{color:t.text}]}>{m.label}{model===m.id?' ✓':''}</Text>
+                  <Text style={[ms.modelDesc,{color:t.primary}]}>{m.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* API Key */}
+            <Text style={[ms.sectionLabel,{color:t.text,marginTop:16}]}>مفتاح API</Text>
+            <Row style={{gap:8,marginBottom:14}}>
+              <Inp value={key} onChange={setKey} type={showKey?'text':'password'} placeholder="gsk_..." dk={dk} style={{flex:1}}/>
+              <TouchableOpacity onPress={()=>setShowKey(v=>!v)}
+                style={[ms.eyeBtn,{backgroundColor:t.pLight}]}>
+                <Text style={{fontSize:18}}>👁</Text>
+              </TouchableOpacity>
+            </Row>
+
+            {/* Security note */}
+            <Row style={[ms.secRow,{backgroundColor:t.gLight,borderColor:t.green}]}>
+              <Text style={{fontSize:16}}>🔒</Text>
+              <Text style={[ms.secTxt,{color:t.textSub}]}>مفتاحك يُحفظ على جهازك فقط ولا يُرسَل لأي طرف ثالث.</Text>
+            </Row>
+
+            {result && (
+              <View style={[ms.resultBox,{backgroundColor:result.ok?t.gLight:t.rLight,borderColor:result.ok?t.green:t.red}]}>
+                <Text style={{color:result.ok?t.green:t.red,fontSize:13,fontWeight:'600'}}>{result.msg}</Text>
+              </View>
+            )}
+
+            <Btn onPress={runTest} disabled={testing||!key.trim()} variant="ghost" full dk={dk} style={{marginBottom:10}}>
+              {testing ? '⏳ جاري الاختبار...' : '📶 اختبر الاتصال'}
+            </Btn>
+            <Btn onPress={save} full size="lg">💾 حفظ الإعدادات</Btn>
+            <View style={{height:24}}/>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const ms = StyleSheet.create({
+  overlay:    { flex:1, backgroundColor:'rgba(0,0,0,.58)', justifyContent:'flex-end' },
+  sheet:      { borderTopLeftRadius:24, borderTopRightRadius:24, padding:20, maxHeight:'92%' },
+  header:     { justifyContent:'space-between', marginBottom:18 },
+  title:      { fontSize:20, fontWeight:'900' },
+  tipRow:     { gap:12, alignItems:'flex-start', marginBottom:18 },
+  tipBubble:  { flex:1, borderRadius:14, borderBottomLeftRadius:4, padding:12, borderWidth:1.5 },
+  tipTxt:     { fontSize:13, fontWeight:'700', lineHeight:22 },
+  sectionLabel:{ fontSize:14, fontWeight:'900', marginBottom:10 },
+  modelRow:   { flexDirection:'row', alignItems:'center', gap:12, padding:11, borderRadius:12, borderWidth:1.5, marginBottom:8 },
+  radio:      { width:18, height:18, borderRadius:9, borderWidth:2, alignItems:'center', justifyContent:'center' },
+  radioDot:   { width:8, height:8, borderRadius:4, backgroundColor:'#fff' },
+  modelLabel: { fontSize:13, fontWeight:'700' },
+  modelDesc:  { fontSize:11 },
+  eyeBtn:     { width:46, height:46, borderRadius:12, alignItems:'center', justifyContent:'center' },
+  secRow:     { gap:8, padding:10, borderRadius:10, marginBottom:14, borderWidth:1 },
+  secTxt:     { flex:1, fontSize:12, lineHeight:20 },
+  resultBox:  { padding:10, borderRadius:10, marginBottom:12, borderWidth:1 },
+});
+
+// ── Settings Screen ───────────────────────────────────────────────────────────
+export default function SettingsScreen({ state, dispatch, dk, onToast }) {
+  const t = T(dk);
+  const S = state.settings;
+  const [name,    setName]    = useState(state.profile.name);
+  const [saved,   setSaved]   = useState(false);
+  const [showAI,  setShowAI]  = useState(false);
+  const [perm,    setPerm]    = useState('default');
+
+  useEffect(()=>{ getPermission().then(setPerm); },[]);
+
+  const toggle = (key) => dispatch({ type:'SAVE_SETTINGS', settings:{ [key]:!S[key] } });
+
+  const saveProfile = () => {
+    dispatch({ type:'SAVE_PROFILE', profile:{ name } });
+    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  };
+
+  const saveNotifSettings = async (updates) => {
+    const merged = { ...S, ...updates };
+    dispatch({ type:'SAVE_SETTINGS', settings:updates });
+    if (merged.notifEnabled) {
+      await scheduleDaily(true, merged.notifTime, merged.notifMessage, merged.notifCustom, state.profile);
+    }
+  };
+
+  const enableNotifs = async () => {
+    const p = await requestPermission();
+    setPerm(p);
+    if (p === 'granted') {
+      dispatch({ type:'SAVE_SETTINGS', settings:{ notifEnabled:true } });
+      await scheduleDaily(true, S.notifTime, S.notifMessage, S.notifCustom, state.profile);
+    } else {
+      Alert.alert('الإشعارات محجوبة','يرجى السماح بالإشعارات من إعدادات الجهاز.');
+    }
+  };
+
+  const disableNotifs = async () => {
+    dispatch({ type:'SAVE_SETTINGS', settings:{ notifEnabled:false } });
+    await cancelAll();
+  };
+
+  const testNotif = () => sendNow(\`مرحباً \${state.profile.name}! 🐘\`,
+    (NOTIF_MESSAGES.find(m=>m.id===S.notifMessage)||NOTIF_MESSAGES[0]).text);
+
+  const groqLabel = GROQ_MODELS.find(m=>m.id===S.aiModel)?.label || S.aiModel;
+
+  const SectionHeader = ({children}) => (
+    <Text style={[s.sectionHeader,{color:t.textMuted}]}>{children}</Text>
+  );
+
+  return (
+    <ScrollView style={[s.container,{backgroundColor:t.bg}]} contentContainerStyle={s.content}>
+      <Text style={[s.pageTitle,{color:t.text}]}>⚙️ الإعدادات</Text>
+
+      {/* Profile */}
+      <SectionHeader>👤 الملف الشخصي</SectionHeader>
+      <Card dk={dk} style={s.card}>
+        <Text style={[s.label,{color:t.textMuted}]}>الاسم</Text>
+        <Inp value={name} onChange={setName} placeholder="اسمك" dk={dk} style={{marginBottom:10}}/>
+        <Btn onPress={saveProfile} full variant={saved?'green':'primary'}>
+          {saved ? '✅ تم الحفظ!' : '💾 حفظ الاسم'}
+        </Btn>
+      </Card>
+
+      {/* Appearance */}
+      <SectionHeader>🎨 المظهر</SectionHeader>
+      <Card dk={dk} style={s.card}>
+        <Row style={s.settingRow}>
+          <Row style={{gap:10,flex:1}}>
+            <View style={[s.settingIcon,{backgroundColor:dk?'#2D2D48':'#FFF7ED'}]}>
+              <Text style={{fontSize:20}}>{dk?'🌙':'☀️'}</Text>
+            </View>
+            <View>
+              <Text style={[s.settingLabel,{color:t.text}]}>الوضع {dk?'المظلم':'الفاتح'}</Text>
+              <Text style={[s.settingSub,{color:t.textSub}]}>اضغط لتبديل المظهر</Text>
+            </View>
+          </Row>
+          <Toggle value={dk} onChange={()=>toggle('darkMode')}/>
+        </Row>
+      </Card>
+
+      {/* Language */}
+      <SectionHeader>🌍 لغة التعلم</SectionHeader>
+      <Card dk={dk} style={s.card}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{flexDirection:'row',gap:8}}>
+            {LANGUAGES.map(l=>(
+              <TouchableOpacity key={l.code}
+                onPress={()=>dispatch({type:'SAVE_PROFILE',profile:{language:l.code}})}
+                style={[s.langChip, state.profile.language===l.code && s.langChipActive, {borderColor:state.profile.language===l.code?'#7C3AED':t.border,backgroundColor:state.profile.language===l.code?t.pLight:t.cardAlt}]}>
+                <Text style={{fontSize:20}}>{l.flag}</Text>
+                <Text style={[s.langTxt,{color:state.profile.language===l.code?t.primary:t.textMuted}]}>{l.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </Card>
+
+      {/* Notifications */}
+      <SectionHeader>🔔 نظام الإشعارات</SectionHeader>
+      <Card dk={dk} style={s.card}>
+        {/* Permission status */}
+        <View style={[s.permRow,{
+          backgroundColor:perm==='granted'?t.gLight:perm==='denied'?t.rLight:t.goLight,
+          borderColor:(perm==='granted'?t.green:perm==='denied'?t.red:t.gold)+'30',
+        }]}>
+          <Text style={{fontSize:18}}>{perm==='granted'?'✅':perm==='denied'?'❌':'⏳'}</Text>
+          <Text style={[s.permTxt,{color:perm==='granted'?t.green:perm==='denied'?t.red:t.gold}]}>
+            {perm==='granted'?'الإشعارات مسموح بها':perm==='denied'?'الإشعارات محجوبة':' في انتظار الإذن'}
+          </Text>
+        </View>
+
+        {/* Enable toggle */}
+        <Row style={[s.settingRow,{marginBottom:S.notifEnabled?16:0}]}>
+          <Row style={{gap:10,flex:1}}>
+            <View style={[s.settingIcon,{backgroundColor:t.pLight}]}>
+              <Text style={{fontSize:20}}>🔔</Text>
+            </View>
+            <View>
+              <Text style={[s.settingLabel,{color:t.text}]}>تذكير يومي</Text>
+              <Text style={[s.settingSub,{color:t.textSub}]}>{S.notifEnabled?'مفعّل':'معطّل'}</Text>
+            </View>
+          </Row>
+          <Toggle value={S.notifEnabled} onChange={v=>v?enableNotifs():disableNotifs()}/>
+        </Row>
+
+        {S.notifEnabled && (
+          <View style={{borderTopWidth:1,borderTopColor:t.border,paddingTop:14,gap:14}}>
+            {/* Time */}
+            <Row style={{justifyContent:'space-between'}}>
+              <Row style={{gap:8}}>
+                <Text style={{fontSize:18}}>🕐</Text>
+                <Text style={[s.settingLabel,{color:t.text}]}>وقت التذكير</Text>
+              </Row>
+              <TextInput
+                value={S.notifTime}
+                onChangeText={v=>saveNotifSettings({notifTime:v})}
+                placeholder="20:00"
+                keyboardType="numbers-and-punctuation"
+                style={[s.timeInput,{borderColor:t.border,backgroundColor:t.card,color:t.text}]}
+              />
+            </Row>
+
+            {/* Message template */}
+            <Text style={[s.settingLabel,{color:t.text}]}>💬 نوع الرسالة</Text>
+            {NOTIF_MESSAGES.map(m=>(
+              <TouchableOpacity key={m.id} onPress={()=>saveNotifSettings({notifMessage:m.id})}
+                style={[s.notifMsgRow,{borderColor:S.notifMessage===m.id?'#7C3AED':t.border,backgroundColor:S.notifMessage===m.id?t.pLight:t.cardAlt}]}>
+                <View style={[s.radio2,{borderColor:S.notifMessage===m.id?'#7C3AED':t.border,backgroundColor:S.notifMessage===m.id?'#7C3AED':'transparent'}]}>
+                  {S.notifMessage===m.id && <View style={ms.radioDot}/>}
+                </View>
+                <View style={{flex:1}}>
+                  <Row style={{gap:6,marginBottom:2}}>
+                    <Text style={{fontSize:16}}>{m.icon}</Text>
+                    <Text style={[{fontWeight:'700',fontSize:13,color:t.text}]}>
+                      {m.id==='custom'?'رسالة مخصصة':m.text.slice(0,30)+'...'}
+                    </Text>
+                  </Row>
+                  {m.id==='custom' && S.notifMessage==='custom' && (
+                    <TextInput
+                      value={S.notifCustom}
+                      onChangeText={v=>saveNotifSettings({notifCustom:v})}
+                      placeholder="اكتب رسالتك المخصصة..."
+                      placeholderTextColor={t.textMuted}
+                      style={[s.customInput,{borderColor:t.border,backgroundColor:t.card,color:t.text}]}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* Preview */}
+            <View style={[s.previewBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+              <Text style={[{fontWeight:'700',fontSize:12,color:t.textMuted,marginBottom:6}]}>معاينة الإشعار:</Text>
+              <Row style={{gap:10}}>
+                <Text style={{fontSize:22}}>🐘</Text>
+                <View style={{flex:1}}>
+                  <Text style={[{fontWeight:'800',fontSize:13,color:t.text}]}>مرحباً {state.profile.name}!</Text>
+                  <Text style={[{fontSize:12,color:t.textSub,marginTop:2,lineHeight:18}]}>
+                    {S.notifMessage==='custom'&&S.notifCustom ? S.notifCustom : (NOTIF_MESSAGES.find(m=>m.id===S.notifMessage)||NOTIF_MESSAGES[0]).text}
+                  </Text>
+                </View>
+              </Row>
+            </View>
+
+            {perm==='granted' && (
+              <Btn onPress={testNotif} variant="ghost" full size="sm" dk={dk}>🧪 إرسال إشعار تجريبي الآن</Btn>
+            )}
+          </View>
+        )}
+      </Card>
+
+      {/* AI */}
+      <SectionHeader>🤖 الذكاء الاصطناعي — Groq</SectionHeader>
+      <Card dk={dk} style={s.card} onPress={()=>setShowAI(true)}>
+        <Row style={{justifyContent:'space-between',alignItems:'center'}}>
+          <Row style={{gap:10}}>
+            <View style={[s.settingIcon,{backgroundColor:t.pLight}]}><Text style={{fontSize:20}}>⚡</Text></View>
+            <View>
+              <Text style={[s.settingLabel,{color:t.text}]}>Groq API</Text>
+              <Text style={[s.settingSub,{color:S.groqApiKey?t.green:t.red}]}>
+                {S.groqApiKey ? '🟢 مفتاح مُضاف — '+groqLabel : '🔴 يحتاج مفتاح API'}
+              </Text>
+            </View>
+          </Row>
+          <Text style={{color:t.textMuted,fontSize:18}}>›</Text>
+        </Row>
+      </Card>
+
+      {/* About */}
+      <Card dk={dk} style={[s.card,{alignItems:'center',marginTop:4}]}>
+        <Text style={{fontSize:42}}>🐘</Text>
+        <Text style={[{fontWeight:'900',fontSize:18,color:t.text,marginTop:8,marginBottom:2}]}>Nader</Text>
+        <Text style={[{color:t.textMuted,fontSize:12}]}>تعلّم المفردات بذكاء — v4.0</Text>
+      </Card>
+
+      <View style={{height:32}}/>
+
+      {showAI && (
+        <GroqModal
+          settings={S} dk={dk}
+          onClose={()=>setShowAI(false)}
+          onSave={s=>dispatch({type:'SAVE_SETTINGS',settings:s})}
+          onToast={onToast}
+        />
+      )}
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container:     { flex:1 },
+  content:       { padding:16 },
+  pageTitle:     { fontSize:22, fontWeight:'900', marginBottom:18 },
+  sectionHeader: { fontSize:12, fontWeight:'700', textTransform:'uppercase', letterSpacing:1, marginBottom:8, marginTop:4 },
+  card:          { marginBottom:14 },
+  label:         { fontSize:12, fontWeight:'700', textTransform:'uppercase', letterSpacing:1, marginBottom:6 },
+  settingRow:    { justifyContent:'space-between', alignItems:'center' },
+  settingIcon:   { width:40, height:40, borderRadius:10, alignItems:'center', justifyContent:'center' },
+  settingLabel:  { fontSize:14, fontWeight:'700' },
+  settingSub:    { fontSize:12, marginTop:1 },
+  langChip:      { alignItems:'center', gap:4, paddingVertical:8, paddingHorizontal:12, borderRadius:12, borderWidth:2 },
+  langTxt:       { fontSize:12, fontWeight:'700' },
+  permRow:       { flexDirection:'row', alignItems:'center', gap:10, padding:10, borderRadius:12, marginBottom:12, borderWidth:1 },
+  permTxt:       { fontSize:13, fontWeight:'700' },
+  timeInput:     { borderWidth:2, borderRadius:10, paddingHorizontal:10, paddingVertical:6, fontSize:15, fontWeight:'700', width:80, textAlign:'center' },
+  notifMsgRow:   { flexDirection:'row', alignItems:'flex-start', gap:10, padding:10, borderRadius:12, borderWidth:1.5, marginBottom:6 },
+  radio2:        { width:18, height:18, borderRadius:9, borderWidth:2, alignItems:'center', justifyContent:'center', marginTop:1, flexShrink:0 },
+  customInput:   { marginTop:6, padding:8, borderRadius:8, borderWidth:1.5, fontSize:13 },
+  previewBox:    { borderRadius:12, padding:12, borderWidth:1 },
+});
+` },
+  { path: "src/screens/StatsScreen.js", content: `import React, { useMemo } from 'react';
+import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { BarChart, LineChart, PieChart } from 'react-native-chart-kit';
+import { LinearGradient } from 'expo-linear-gradient';
+import { T } from '../theme';
+import { LEVELS, getLevelFromXP, nDaysAgo, weekDayAr, dayLabel } from '../state';
+import { Card } from '../components';
+
+const W = Dimensions.get('window').width;
+const CHART_W = W - 32;
+
+const chartCfg = (t) => ({
+  backgroundColor: t.card,
+  backgroundGradientFrom: t.card,
+  backgroundGradientTo: t.card,
+  color: (opacity=1) => \`rgba(124,58,237,\${opacity})\`,
+  labelColor: () => t.textMuted,
+  decimalPlaces: 0,
+  propsForDots: { r:'4', strokeWidth:'2', stroke:'#7C3AED' },
+  barPercentage: 0.6,
+});
+
+export default function StatsScreen({ state, dk }) {
+  const t = T(dk);
+  const { profile, words, sessions=[], notes=[] } = state;
+  const lv  = getLevelFromXP(profile.xp);
+  const lvl = LEVELS[lv] || LEVELS[0];
+  const mastered = words.filter(w=>w.mastered);
+  const hard     = words.filter(w=>w.hard);
+  const learning = words.filter(w=>!w.mastered&&!w.hard&&w.correctStreak>0);
+  const newW     = words.filter(w=>!w.mastered&&!w.hard&&!w.correctStreak);
+
+  const totalReviews = sessions.reduce((a,s)=>a+(s.total||0),0);
+  const totalCorrect = sessions.reduce((a,s)=>a+(s.correct||0),0);
+  const accuracy     = totalReviews>0 ? Math.round((totalCorrect/totalReviews)*100) : 0;
+  const avgDuration  = sessions.length>0 ? Math.round(sessions.reduce((a,s)=>a+(s.duration||0),0)/sessions.length) : 0;
+
+  // Last 7 days
+  const last7 = useMemo(()=>Array.from({length:7},(_,i)=>{
+    const d = nDaysAgo(6-i);
+    const ds = sessions.filter(s=>s.date===d);
+    return {
+      day: weekDayAr(d),
+      reviewed: ds.reduce((a,s)=>a+(s.total||0),0),
+      correct:  ds.reduce((a,s)=>a+(s.correct||0),0),
+      added:    words.filter(w=>w.addedDate?.startsWith(d)).length,
+    };
+  }),[sessions,words]);
+
+  // Pie data for react-native-chart-kit
+  const pieData = [
+    { name:'متقنة',  population:mastered.length||0, color:'#10B981', legendFontColor:t.text, legendFontSize:12 },
+    { name:'تعلم',   population:learning.length||0, color:'#7C3AED', legendFontColor:t.text, legendFontSize:12 },
+    { name:'صعبة',   population:hard.length||0,     color:'#EF4444', legendFontColor:t.text, legendFontSize:12 },
+    { name:'جديدة',  population:newW.length||0,     color:'#F59E0B', legendFontColor:t.text, legendFontSize:12 },
+  ].filter(d=>d.population>0);
+
+  const barData = {
+    labels: last7.map(d=>d.day),
+    datasets:[{ data:last7.map(d=>d.reviewed||0) }],
+  };
+
+  const addedData = {
+    labels: last7.map(d=>d.day),
+    datasets:[{ data:last7.map(d=>d.added||0), color:(o=1)=>\`rgba(245,158,11,\${o})\` }],
+  };
+
+  const thr=[0,200,500,1000,2000];
+  const cur=thr[lv]||0, nxt=thr[lv+1]||cur+500;
+  const xpPct = Math.min(((profile.xp-cur)/(nxt-cur))*100,100)||0;
+
+  const KPI = ({label,value,color,bg}) => (
+    <View style={[s.kpi,{backgroundColor:bg}]}>
+      <Text style={[s.kpiVal,{color}]}>{value}</Text>
+      <Text style={[s.kpiLbl,{color}]}>{label}</Text>
+    </View>
+  );
+
+  return (
+    <ScrollView style={[s.container,{backgroundColor:t.bg}]} contentContainerStyle={s.content}>
+      <Text style={[s.pageTitle,{color:t.text}]}>📊 الإحصائيات</Text>
+
+      {/* Level hero */}
+      <LinearGradient colors={['#7C3AED','#5B21B6']} style={s.levelCard}>
+        <View style={{flexDirection:'row',alignItems:'center',gap:16}}>
+          <Text style={{fontSize:52,lineHeight:60}}>{lvl.icon}</Text>
+          <View style={{flex:1}}>
+            <Text style={s.levelName}>{lvl.name}</Text>
+            <Text style={s.levelXP}>{profile.xp} XP · المستوى {lv+1}/4</Text>
+            <View style={s.xpBarBg}>
+              <View style={[s.xpBarFill,{width:\`\${xpPct}%\`}]}/>
+            </View>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* KPI row 1 */}
+      <View style={s.kpiRow}>
+        <View style={[s.kpiHero,{backgroundColor:'#FF6B6B'}]}>
+          <Text style={{fontSize:32}}>🔥</Text>
+          <Text style={s.kpiHeroVal}>{profile.streak}</Text>
+          <Text style={s.kpiHeroLbl}>سلسلة الأيام</Text>
+        </View>
+        <View style={[s.kpiHero,{backgroundColor:'#7C3AED'}]}>
+          <Text style={{fontSize:32}}>📝</Text>
+          <Text style={s.kpiHeroVal}>{words.length}</Text>
+          <Text style={s.kpiHeroLbl}>إجمالي الكلمات</Text>
+        </View>
+      </View>
+
+      {/* KPI row 2 */}
+      <View style={s.kpiRow}>
+        <KPI label="متقنة"       value={mastered.length} color="#10B981" bg={t.gLight}/>
+        <KPI label="دقة الإجابة" value={\`\${accuracy}%\`} color="#7C3AED" bg={t.pLight}/>
+        <KPI label="متوسط الجلسة"value={\`\${avgDuration}ث\`} color="#F59E0B" bg={t.goLight}/>
+      </View>
+
+      {/* Hint points */}
+      <Card dk={dk} style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+        <Text style={{fontSize:14,fontWeight:'700',color:t.textSub}}>💡 Hint points</Text>
+        <Text style={{fontSize:22,fontWeight:'900',color:t.gold}}>{profile.hintPoints}</Text>
+      </Card>
+
+      {/* Bar chart — weekly activity */}
+      {last7.some(d=>d.reviewed>0) && (
+        <Card dk={dk} style={s.chartCard}>
+          <Text style={[s.chartTitle,{color:t.text}]}>📅 النشاط خلال 7 أيام</Text>
+          <BarChart
+            data={barData}
+            width={CHART_W - 32}
+            height={180}
+            chartConfig={chartCfg(t)}
+            style={s.chart}
+            showValuesOnTopOfBars
+            fromZero
+          />
+          <View style={s.legend}>
+            <View style={s.legendItem}><View style={[s.legendDot,{backgroundColor:'#7C3AED'}]}/><Text style={[s.legendTxt,{color:t.textSub}]}>مراجعة</Text></View>
+          </View>
+        </Card>
+      )}
+
+      {/* Pie chart */}
+      {pieData.length > 0 && (
+        <Card dk={dk} style={s.chartCard}>
+          <Text style={[s.chartTitle,{color:t.text}]}>توزيع الكلمات</Text>
+          <PieChart
+            data={pieData}
+            width={CHART_W - 32}
+            height={160}
+            chartConfig={chartCfg(t)}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="12"
+            style={s.chart}
+          />
+        </Card>
+      )}
+
+      {/* Daily additions */}
+      {last7.some(d=>d.added>0) && (
+        <Card dk={dk} style={s.chartCard}>
+          <Text style={[s.chartTitle,{color:t.text}]}>➕ الكلمات المضافة يومياً</Text>
+          <BarChart
+            data={addedData}
+            width={CHART_W - 32}
+            height={160}
+            chartConfig={{...chartCfg(t), color:(o=1)=>\`rgba(245,158,11,\${o})\`}}
+            style={s.chart}
+            fromZero
+          />
+        </Card>
+      )}
+
+      {/* Sessions history */}
+      {sessions.length > 0 && (
+        <Card dk={dk} style={s.chartCard}>
+          <Text style={[s.chartTitle,{color:t.text}]}>⏱️ آخر الجلسات</Text>
+          {sessions.slice(-5).reverse().map((ss,i)=>(
+            <View key={i} style={[s.sessionRow, i>0 && {borderTopWidth:1,borderTopColor:t.border}]}>
+              <View>
+                <Text style={[{fontWeight:'700',fontSize:14,color:t.text}]}>{ss.date}</Text>
+                <Text style={[{fontSize:12,color:t.textSub,marginTop:2}]}>{ss.total} بطاقة · {ss.duration}ث</Text>
+              </View>
+              <View style={{alignItems:'flex-end'}}>
+                <Text style={{fontWeight:'900',fontSize:16,color:t.green}}>✅ {ss.correct}/{ss.total}</Text>
+                <Text style={{fontSize:11,color:t.textMuted}}>{ss.total>0?Math.round((ss.correct/ss.total)*100):0}%</Text>
+              </View>
+            </View>
+          ))}
+        </Card>
+      )}
+
+      {/* Hardest words */}
+      {hard.length > 0 && (
+        <Card dk={dk} style={s.chartCard}>
+          <Text style={[s.chartTitle,{color:t.text}]}>💪 الكلمات الأصعب</Text>
+          {hard.slice(0,5).map((w,i)=>{
+            const pct = Math.min(((w.incorrectStreak||0)/5)*100,100);
+            return (
+              <View key={w.id} style={{marginBottom:10}}>
+                <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:4}}>
+                  <Text style={{color:t.text,fontWeight:'700',fontSize:13}}>{w.word}</Text>
+                  <Text style={{color:t.red,fontSize:12}}>خطأ ×{w.incorrectStreak||0}</Text>
+                </View>
+                <View style={{height:6,backgroundColor:t.border,borderRadius:4,overflow:'hidden'}}>
+                  <View style={{height:'100%',width:\`\${pct}%\`,backgroundColor:t.red,borderRadius:4}}/>
+                </View>
+              </View>
+            );
+          })}
+        </Card>
+      )}
+
+      {words.length === 0 && (
+        <Card dk={dk} style={{alignItems:'center',padding:44}}>
+          <Text style={{fontSize:52,marginBottom:10}}>📭</Text>
+          <Text style={{color:t.textMuted,textAlign:'center'}}>لا إحصائيات بعد — أضف كلمات وابدأ المراجعة!</Text>
+        </Card>
+      )}
+
+      <View style={{height:32}}/>
+    </ScrollView>
+  );
+}
+
+const s = StyleSheet.create({
+  container:  { flex:1 },
+  content:    { padding:16 },
+  pageTitle:  { fontSize:22, fontWeight:'900', marginBottom:18 },
+  levelCard:  { borderRadius:18, padding:16, marginBottom:14 },
+  levelName:  { fontSize:18, fontWeight:'900', color:'#fff' },
+  levelXP:    { fontSize:13, color:'rgba(255,255,255,.85)', marginVertical:4 },
+  xpBarBg:    { height:8, backgroundColor:'rgba(255,255,255,.25)', borderRadius:6, overflow:'hidden', marginTop:6 },
+  xpBarFill:  { height:'100%', backgroundColor:'rgba(255,255,255,.85)', borderRadius:6 },
+  kpiRow:     { flexDirection:'row', gap:10, marginBottom:10 },
+  kpiHero:    { flex:1, borderRadius:16, padding:16, alignItems:'center', gap:4 },
+  kpiHeroVal: { fontSize:26, fontWeight:'900', color:'#fff' },
+  kpiHeroLbl: { fontSize:12, color:'rgba(255,255,255,.85)' },
+  kpi:        { flex:1, borderRadius:13, padding:12, alignItems:'center' },
+  kpiVal:     { fontSize:22, fontWeight:'900' },
+  kpiLbl:     { fontSize:11, marginTop:2 },
+  chartCard:  { marginBottom:14, padding:16 },
+  chartTitle: { fontSize:14, fontWeight:'900', marginBottom:12 },
+  chart:      { borderRadius:12 },
+  legend:     { flexDirection:'row', justifyContent:'center', gap:16, marginTop:8 },
+  legendItem: { flexDirection:'row', alignItems:'center', gap:5 },
+  legendDot:  { width:10, height:10, borderRadius:2 },
+  legendTxt:  { fontSize:12 },
+  sessionRow: { flexDirection:'row', justifyContent:'space-between', paddingVertical:10 },
+});
+` },
+  { path: "src/screens/WordsScreen.js", content: `import React, { useState } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  StyleSheet, Image, Alert, TextInput, Modal,
+} from 'react-native';
+import * as Speech from 'expo-speech';
+import { T } from '../theme';
+import { getStatus, statusColors, statusLabel, getImageUrl } from '../state';
+import { Card, Btn, Inp, Badge, SpeakBtn, Row } from '../components';
+
+// ── Word Detail Modal ─────────────────────────────────────────────────────────
+const WordModal = ({ word, onClose, onUpdate, onDelete, dk }) => {
+  const t = T(dk);
+  const [editing, setEditing] = useState(false);
+  const [def, setDef]   = useState(word.definition || '');
+  const [ex, setEx]     = useState([...(word.examples || ['', ''])]);
+  const [imgUrl, setImgUrl] = useState(word.imageUrl || '');
+  const status = getStatus(word);
+
+  const regenImg = () => setImgUrl(getImageUrl(word.word, def, Date.now()));
+  const save = () => { onUpdate({ ...word, definition:def, examples:ex, imageUrl:imgUrl }); setEditing(false); };
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <View style={s.modalOverlay}>
+        <View style={[s.modalSheet, { backgroundColor:t.card }]}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Top bar */}
+            <Row style={s.modalTopBar}>
+              <TouchableOpacity onPress={onClose}><Text style={[s.modalClose,{color:t.textSub}]}>✕</Text></TouchableOpacity>
+              <Text style={[s.modalWordTitle,{color:t.text}]}>{word.word}</Text>
+              <Row style={{gap:12}}>
+                <TouchableOpacity onPress={()=>setEditing(e=>!e)}><Text style={{fontSize:18,color:t.primary}}>✏️</Text></TouchableOpacity>
+                <TouchableOpacity onPress={()=>Alert.alert('حذف الكلمة؟','',[ {text:'إلغاء',style:'cancel'}, {text:'حذف',style:'destructive',onPress:()=>{onDelete(word.id);onClose();}} ])}><Text style={{fontSize:18}}>🗑️</Text></TouchableOpacity>
+              </Row>
+            </Row>
+
+            {/* Image */}
+            {imgUrl ? <Image source={{uri:imgUrl}} style={s.modalImg} resizeMode="cover"/> : null}
+
+            {/* Word + badge */}
+            <Row style={s.modalWordRow}>
+              <View style={{flex:1}}>
+                <Text style={[s.modalWord,{color:t.text}]}>{word.word}</Text>
+                <Badge status={status} dk={dk}/>
+              </View>
+              <SpeakBtn onPress={()=>Speech.speak(word.word,{language:word.language})} dk={dk} size={22}/>
+            </Row>
+
+            {/* Stats mini-row */}
+            <Row style={{gap:8,marginBottom:16}}>
+              {[{l:'مراجعة',v:(word.correctStreak||0)+(word.incorrectStreak||0)},{l:'صحيحة',v:word.correctStreak||0},{l:'الصعوبة',v:word.difficulty||'—'}].map(stat=>(
+                <View key={stat.l} style={[s.miniStat,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+                  <Text style={[s.miniStatVal,{color:t.primary}]}>{stat.v}</Text>
+                  <Text style={[s.miniStatLbl,{color:t.textMuted}]}>{stat.l}</Text>
+                </View>
+              ))}
+            </Row>
+
+            {/* Definition */}
+            <Row style={s.fieldHeader}>
+              <Text style={[s.fieldLabel,{color:t.primary}]}>التعريف</Text>
+              <SpeakBtn onPress={()=>Speech.speak(def,{language:word.language})} dk={dk}/>
+            </Row>
+            {editing
+              ? <Inp value={def} onChange={setDef} rows={3} dk={dk} style={{marginBottom:14}}/>
+              : <View style={[s.fieldBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+                  <Text style={[s.fieldText,{color:t.text}]}>{def}</Text>
+                </View>
+            }
+
+            {/* Examples */}
+            <Text style={[s.fieldLabel,{color:t.primary,marginBottom:8}]}>الأمثلة</Text>
+            {ex.map((e,i)=>(
+              <View key={i} style={{marginBottom:8}}>
+                {editing
+                  ? <Inp value={e} onChange={v=>{const n=[...ex];n[i]=v;setEx(n);}} dk={dk}/>
+                  : <Row style={[s.fieldBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+                      <Text style={[s.fieldText,{color:t.text,flex:1}]}>{e}</Text>
+                      <SpeakBtn onPress={()=>Speech.speak(e,{language:word.language})} dk={dk}/>
+                    </Row>
+                }
+              </View>
+            ))}
+
+            {/* Image edit */}
+            {editing && (
+              <View style={{marginBottom:14}}>
+                <Text style={[s.fieldLabel,{color:t.primary,marginBottom:8}]}>الصورة</Text>
+                {imgUrl ? <Image source={{uri:imgUrl}} style={{width:'100%',height:110,borderRadius:12,marginBottom:10}} resizeMode="cover"/> : null}
+                <Btn onPress={regenImg} variant="ghost" dk={dk} style={{fontSize:13}}>🔄 توليد صورة جديدة</Btn>
+              </View>
+            )}
+
+            {/* Next review */}
+            {word.nextReview && (
+              <Row style={[s.nextReviewBox,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+                <Text style={{fontSize:16}}>🕐</Text>
+                <Text style={[s.nextReviewTxt,{color:t.textSub}]}>المراجعة القادمة: {word.nextReview}</Text>
+              </Row>
+            )}
+
+            {/* Save / Cancel */}
+            {editing && (
+              <Row style={{gap:10,marginTop:4}}>
+                <Btn onPress={()=>setEditing(false)} variant="white" full dk={dk}>إلغاء</Btn>
+                <Btn onPress={save} full>💾 حفظ</Btn>
+              </Row>
+            )}
+            <View style={{height:24}}/>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// ── Words Screen ──────────────────────────────────────────────────────────────
+export default function WordsScreen({ state, dispatch, dk }) {
+  const t = T(dk);
+  const [view,   setView]   = useState('words'); // 'words' | 'notes'
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
+  const { words, notes = [] } = state;
+
+  const counts = {
+    mastered: words.filter(w=>w.mastered).length,
+    hard:     words.filter(w=>w.hard).length,
+    learning: words.filter(w=>!w.mastered&&!w.hard&&w.correctStreak>0).length,
+    new:      words.filter(w=>!w.mastered&&!w.hard&&!w.correctStreak).length,
+  };
+
+  const filtered = words.filter(w =>
+    (!search || w.word.toLowerCase().includes(search.toLowerCase())) &&
+    (filter === 'all' || getStatus(w) === filter)
+  );
+
+  const updateWord  = (w) => dispatch({ type:'UPDATE_WORD', word:w });
+  const deleteWord  = (id) => dispatch({ type:'DELETE_WORD', id });
+  const deleteNote  = (i) => dispatch({ type:'DELETE_NOTE', index:i });
+
+  return (
+    <View style={[s.container,{backgroundColor:t.bg}]}>
+      {/* View toggle */}
+      <View style={[s.tabBar,{backgroundColor:t.card,borderBottomColor:t.border}]}>
+        {[{id:'words',l:'📝 كلماتي'},{id:'notes',l:'📓 ملاحظاتي'}].map(tb=>(
+          <TouchableOpacity key={tb.id} onPress={()=>setView(tb.id)} style={[s.tab, view===tb.id && s.tabActive]}>
+            <Text style={[s.tabTxt,{color:view===tb.id?t.primary:t.textMuted}]}>{tb.l}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {view === 'words' ? (
+        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {/* Search */}
+          <View style={[s.searchBox,{backgroundColor:t.card,borderColor:t.border}]}>
+            <Text style={{fontSize:16,marginRight:8}}>🔍</Text>
+            <TextInput
+              value={search} onChangeText={setSearch}
+              placeholder="ابحث عن كلمة..."
+              placeholderTextColor={t.textMuted}
+              style={[s.searchInput,{color:t.text}]}
+            />
+          </View>
+
+          {/* Filter chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:12}}>
+            <View style={{flexDirection:'row',gap:8,paddingHorizontal:2}}>
+              {[
+                {id:'all',      l:\`الكل (\${words.length})\`},
+                {id:'mastered', l:\`متقنة (\${counts.mastered})\`},
+                {id:'hard',     l:\`صعبة (\${counts.hard})\`},
+                {id:'learning', l:\`تعلم (\${counts.learning})\`},
+                {id:'new',      l:\`جديدة (\${counts.new})\`},
+              ].map(f=>(
+                <TouchableOpacity key={f.id} onPress={()=>setFilter(f.id)}
+                  style={[s.filterChip, filter===f.id && s.filterChipActive, {borderColor:filter===f.id?t.primary:t.border, backgroundColor:filter===f.id?t.pLight:t.card}]}>
+                  <Text style={[s.filterChipTxt,{color:filter===f.id?t.primary:t.textMuted}]}>{f.l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* Word list */}
+          {filtered.length === 0 ? (
+            <View style={s.emptyArea}>
+              <Text style={{fontSize:48,marginBottom:12}}>📭</Text>
+              <Text style={[{color:t.textMuted,fontSize:14,textAlign:'center'}]}>لا كلمات هنا</Text>
+            </View>
+          ) : (
+            filtered.map(word => {
+              const status = getStatus(word);
+              const sc = statusColors(status, dk);
+              return (
+                <TouchableOpacity key={word.id} onPress={()=>setSelected(word)} activeOpacity={0.85}>
+                  <Card dk={dk} style={s.wordRow}>
+                    {word.imageUrl ? (
+                      <Image source={{uri:word.imageUrl}} style={s.wordThumb} resizeMode="cover"/>
+                    ) : (
+                      <View style={[s.wordThumbPlaceholder,{backgroundColor:sc.bg}]}>
+                        <Text style={{fontSize:20}}>{word.word[0]?.toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={{flex:1,gap:4}}>
+                      <Row style={{justifyContent:'space-between'}}>
+                        <Text style={[s.wordName,{color:t.text}]}>{word.word}</Text>
+                        <Badge status={status} dk={dk}/>
+                      </Row>
+                      <Text style={[s.wordDef,{color:t.textSub}]} numberOfLines={1}>{word.definition}</Text>
+                      {word.nextReview && (
+                        <Text style={[s.wordNext,{color:t.textMuted}]}>📅 {word.nextReview}</Text>
+                      )}
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      ) : (
+        // Notes view
+        <ScrollView contentContainerStyle={s.content}>
+          {notes.length === 0 ? (
+            <View style={s.emptyArea}>
+              <Text style={{fontSize:56,marginBottom:12}}>📭</Text>
+              <Text style={[{color:t.textMuted,fontSize:14,textAlign:'center'}]}>لا ملاحظات بعد</Text>
+              <Text style={[{color:t.textMuted,fontSize:12,textAlign:'center',marginTop:6,lineHeight:20}]}>
+                ستظهر هنا تصحيحات الفقرة التي تحفظها بعد كل جلسة مراجعة
+              </Text>
+            </View>
+          ) : (
+            [...notes].reverse().map((note, i) => {
+              const realIdx = notes.length - 1 - i;
+              return (
+                <Card key={i} dk={dk} style={[s.noteCard, {borderLeftColor: note.score>=5 ? t.green : t.red}]}>
+                  <Row style={s.noteHeader}>
+                    <Text style={[s.noteDate,{color:t.textMuted}]}>{note.date}</Text>
+                    <Row style={{gap:8,alignItems:'center'}}>
+                      <View style={[s.noteScore,{backgroundColor:note.score>=5?t.gLight:t.rLight}]}>
+                        <Text style={[s.noteScoreTxt,{color:note.score>=5?t.green:t.red}]}>{note.score}/10</Text>
+                      </View>
+                      <TouchableOpacity onPress={()=>Alert.alert('حذف الملاحظة؟','',[ {text:'إلغاء',style:'cancel'}, {text:'حذف',style:'destructive',onPress:()=>deleteNote(realIdx)} ])}>
+                        <Text style={{fontSize:16,color:t.red}}>🗑️</Text>
+                      </TouchableOpacity>
+                    </Row>
+                  </Row>
+                  <View style={[s.wordChips,{marginBottom:8}]}>
+                    {(note.words||[]).map((w,wi)=>(
+                      <View key={wi} style={[s.noteChip,{backgroundColor:t.pLight}]}>
+                        <Text style={[s.noteChipTxt,{color:t.primary}]}>{w}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[s.noteParagraph,{color:t.textSub}]}>{note.paragraph}</Text>
+                  {(note.corrections||[]).length>0 && (
+                    <View style={[s.noteCorrections,{backgroundColor:t.cardAlt,borderColor:t.border}]}>
+                      <Text style={[s.noteCorrectionsTitle,{color:t.text}]}>📝 التصحيحات:</Text>
+                      {note.corrections.map((c,ci)=>(
+                        <Text key={ci} style={[{color:t.textSub,fontSize:13,marginTop:4}]}>• {c}</Text>
+                      ))}
+                    </View>
+                  )}
+                </Card>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
+
+      {/* Word detail modal */}
+      {selected && (
+        <WordModal
+          word={selected}
+          dk={dk}
+          onClose={()=>setSelected(null)}
+          onUpdate={(w)=>{ updateWord(w); setSelected(w); }}
+          onDelete={(id)=>{ deleteWord(id); setSelected(null); }}
+        />
+      )}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  container:    { flex:1 },
+  tabBar:       { flexDirection:'row', borderBottomWidth:1, paddingTop:52 },
+  tab:          { flex:1, paddingVertical:12, alignItems:'center' },
+  tabActive:    { borderBottomWidth:2, borderBottomColor:'#7C3AED' },
+  tabTxt:       { fontSize:14, fontWeight:'700' },
+  content:      { padding:16, paddingBottom:32 },
+  searchBox:    { flexDirection:'row', alignItems:'center', borderRadius:12, borderWidth:1.5, paddingHorizontal:12, paddingVertical:10, marginBottom:12 },
+  searchInput:  { flex:1, fontSize:15, fontWeight:'500' },
+  filterChip:   { paddingVertical:6, paddingHorizontal:12, borderRadius:20, borderWidth:1.5 },
+  filterChipActive:{},
+  filterChipTxt:{ fontSize:12, fontWeight:'700' },
+  wordRow:      { flexDirection:'row', gap:12, alignItems:'center', marginBottom:8, padding:12 },
+  wordThumb:    { width:56, height:56, borderRadius:10 },
+  wordThumbPlaceholder:{ width:56, height:56, borderRadius:10, alignItems:'center', justifyContent:'center' },
+  wordName:     { fontSize:17, fontWeight:'900' },
+  wordDef:      { fontSize:13 },
+  wordNext:     { fontSize:11 },
+  emptyArea:    { alignItems:'center', paddingTop:60 },
+  // Note styles
+  noteCard:     { borderLeftWidth:4, marginBottom:12, padding:14 },
+  noteHeader:   { justifyContent:'space-between', marginBottom:10 },
+  noteDate:     { fontSize:12, fontWeight:'600' },
+  noteScore:    { paddingHorizontal:10, paddingVertical:3, borderRadius:20 },
+  noteScoreTxt: { fontWeight:'900', fontSize:13 },
+  wordChips:    { flexDirection:'row', flexWrap:'wrap', gap:6 },
+  noteChip:     { paddingHorizontal:10, paddingVertical:4, borderRadius:20 },
+  noteChipTxt:  { fontSize:12, fontWeight:'700' },
+  noteParagraph:{ fontSize:13, lineHeight:20, marginBottom:8, fontStyle:'italic' },
+  noteCorrections:{ borderRadius:10, padding:10, borderWidth:1 },
+  noteCorrectionsTitle:{ fontSize:13, fontWeight:'800', marginBottom:4 },
+  // Modal
+  modalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,.58)', justifyContent:'flex-end' },
+  modalSheet:   { borderTopLeftRadius:24, borderTopRightRadius:24, padding:20, maxHeight:'92%' },
+  modalTopBar:  { justifyContent:'space-between', marginBottom:14 },
+  modalClose:   { fontSize:20 },
+  modalWordTitle:{ fontSize:18, fontWeight:'900' },
+  modalImg:     { width:'100%', height:150, borderRadius:14, marginBottom:14 },
+  modalWordRow: { justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 },
+  modalWord:    { fontSize:28, fontWeight:'900', marginBottom:6 },
+  miniStat:     { flex:1, borderRadius:12, padding:10, alignItems:'center', borderWidth:1 },
+  miniStatVal:  { fontSize:20, fontWeight:'900' },
+  miniStatLbl:  { fontSize:11, color:'#999', marginTop:2 },
+  fieldHeader:  { justifyContent:'space-between', marginBottom:6 },
+  fieldLabel:   { fontSize:14, fontWeight:'700' },
+  fieldBox:     { borderRadius:12, padding:12, borderWidth:1, marginBottom:14 },
+  fieldText:    { fontSize:14, lineHeight:22 },
+  nextReviewBox:{ gap:6, padding:10, borderRadius:12, borderWidth:1, marginBottom:14 },
+  nextReviewTxt:{ fontSize:13 },
+});
+` },
+  { path: "src/services/ai.js", content: `const callGroq = async (apiKey, model, messages) => {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":\`Bearer \${apiKey}\`},
+    body:JSON.stringify({model, max_tokens:1000, temperature:0.7, messages}),
+  });
+  if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||\`HTTP \${res.status}\`); }
+  const d=await res.json();
+  return d.choices?.[0]?.message?.content||"";
+};
+
+const parseJSON = (raw) => {
+  const clean=raw.replace(/\`\`\`json\\s*/gi,"").replace(/\`\`\`\\s*/g,"").trim();
+  const m=clean.match(/\\{[\\s\\S]*\\}/);
+  if(!m) throw new Error("لم يُعَد JSON صالح");
+  return JSON.parse(m[0]);
+};
+
+export const callAI = (settings, messages) => callGroq(settings.groqApiKey, settings.aiModel, messages);
+
+export const aiGenerateWord = async (word, lang, settings) => {
+  const raw = await callAI(settings, [{role:"user",content:
+    \`You're a friendly language tutor helping someone learn \${lang}.\\n\`+
+    \`Give me a clear, natural breakdown of the word "\${word}".\\n\`+
+    \`Return ONLY a raw JSON object — no markdown, no extra text:\\n\`+
+    \`{"definition":"One plain sentence that nails what the word means","examples":["A real-sounding everyday sentence using \${word}","Another natural sentence using \${word} in a different context"]}\`
+  }]);
+  return parseJSON(raw);
+};
+
+export const aiReviewContent = async (word, lang, settings) => {
+  const raw = await callAI(settings, [{role:"user",content:
+    \`You're making a fill-in-the-blank flashcard for the \${lang} word "\${word}".\\n\`+
+    \`Replace every single occurrence of "\${word}" with ___ (three underscores).\\n\`+
+    \`Return ONLY a raw JSON object — no markdown, no extra text:\\n\`+
+    \`{"definition":"The definition with ___ where the word belongs","examples":["A natural sentence with ___ in place of the word","Another everyday sentence with ___ in place of the word"]}\`
+  }]);
+  return parseJSON(raw);
+};
+
+export const aiEvaluateParagraph = async (paragraph, words, lang, settings) => {
+  const raw = await callAI(settings, [{role:"user",content:
+    \`You're a chill but thorough \${lang} writing coach.\\n\`+
+    \`Target vocab words: \${words.join(", ")}\\n\`+
+    \`Student's paragraph: "\${paragraph}"\\n\\n\`+
+    \`Wild stories and creative writing are totally fine — judge grammar and word usage, not realism.\\n\`+
+    \`Return ONLY a raw JSON object — no markdown:\\n\`+
+    \`{"score":7,"feedback":"One honest sentence summing up their writing","corrections":["Specific fix with before/after if possible","Another concrete correction"],"encouragement":"One punchy motivational line"}\`
+  }]);
+  return parseJSON(raw);
+};
+
+export const testGroqConnection = async (apiKey, model) => {
+  try {
+    const r = await callGroq(apiKey, model, [{role:"user",content:"Reply with one word: OK"}]);
+    return { ok:true, msg:\`✅ ناجح! رد النموذج: "\${r.trim().slice(0,30)}"\` };
+  } catch(e) {
+    return { ok:false, msg:\`❌ فشل: \${e.message}\` };
+  }
+};
+` },
+  { path: "src/services/notifications.js", content: `import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { Platform } from 'react-native';
+import { NOTIF_MESSAGES } from '../state';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({ shouldShowAlert:true, shouldPlaySound:true, shouldSetBadge:false }),
+});
+
+let _timer = null;
+
+export const requestPermission = async () => {
+  if (!Device.isDevice) return 'simulator';
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  if (existing === 'granted') return 'granted';
+  const { status } = await Notifications.requestPermissionsAsync();
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name:'Nader', importance: Notifications.AndroidImportance.MAX,
+    });
+  }
+  return status;
+};
+
+export const getPermission = async () => {
+  const { status } = await Notifications.getPermissionsAsync();
+  return status;
+};
+
+export const sendNow = async (title, body) => {
+  await Notifications.scheduleNotificationAsync({
+    content:{ title, body, sound:true },
+    trigger: null,
+  });
+};
+
+export const scheduleDaily = async (enabled, timeStr, messageTemplate, customText, profile) => {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  if (!_timer) { clearTimeout(_timer); _timer=null; }
+  if (!enabled) return;
+
+  const [hh, mm] = (timeStr||"20:00").split(":").map(Number);
+  const tpl = NOTIF_MESSAGES.find(m=>m.id===messageTemplate)||NOTIF_MESSAGES[0];
+  const body = messageTemplate==="custom" && customText ? customText : tpl.text;
+  const title = \`مرحباً \${profile?.name||""}! 🐘\`;
+
+  await Notifications.scheduleNotificationAsync({
+    content:{ title, body, sound:true },
+    trigger:{ hour:hh, minute:mm, repeats:true },
+  });
+};
+
+export const cancelAll = async () => {
+  await Notifications.cancelAllScheduledNotificationsAsync();
+};
+` },
+  { path: "src/services/storage.js", content: `import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initState } from '../state';
+
+const KEY = 'nader_app_v4';
+
+export const loadState = async () => {
+  try {
+    const raw = await AsyncStorage.getItem(KEY);
+    if (!raw) return initState();
+    const saved = JSON.parse(raw);
+    const fresh = initState();
+    return {
+      ...fresh, ...saved,
+      profile:  { ...fresh.profile,  ...saved.profile  },
+      settings: { ...fresh.settings, ...saved.settings },
+      words:    Array.isArray(saved.words)    ? saved.words    : [],
+      sessions: Array.isArray(saved.sessions) ? saved.sessions : [],
+      notes:    Array.isArray(saved.notes)    ? saved.notes    : [],
+    };
+  } catch { return initState(); }
+};
+
+export const saveState = async (state) => {
+  try { await AsyncStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+};
+` },
+  { path: "src/state.js", content: `// ══════════════════════════════════════════════════════════════════════════════
+// CONSTANTS (same as web)
+// ══════════════════════════════════════════════════════════════════════════════
+export const LANGUAGES = [
+  { code:"en", name:"English",  flag:"🇺🇸" },
+  { code:"ar", name:"Arabic",   flag:"🇸🇦" },
+  { code:"fr", name:"French",   flag:"🇫🇷" },
+  { code:"de", name:"German",   flag:"🇩🇪" },
+  { code:"es", name:"Spanish",  flag:"🇪🇸" },
+  { code:"ja", name:"Japanese", flag:"🇯🇵" },
+  { code:"zh", name:"Chinese",  flag:"🇨🇳" },
+  { code:"ko", name:"Korean",   flag:"🇰🇷" },
+];
+export const LEVELS = [
+  { name:"مبتدئ",       icon:"🌱", minXP:0    },
+  { name:"كاتب",        icon:"✍️", minXP:200  },
+  { name:"محترف",       icon:"🎓", minXP:500  },
+  { name:"متحدث أصلي", icon:"🌟", minXP:1000 },
+];
+export const GROQ_MODELS = [
+  { id:"compound-beta",           label:"Compound Beta",        desc:"موصى به — ذكي وسريع" },
+  { id:"llama-3.3-70b-versatile", label:"LLaMA 3.3 70B",        desc:"أفضل جودة"            },
+  { id:"llama-3.1-8b-instant",    label:"LLaMA 3.1 8B Instant", desc:"الأسرع"               },
+  { id:"gemma2-9b-it",            label:"Gemma 2 9B",           desc:"بديل خفيف"            },
+];
+export const NOTIF_MESSAGES = [
+  { id:"streak",   icon:"🔥", text:"لا تطفئ شعلتك! راجع كلماتك اليوم وحافظ على Streak تاعك!" },
+  { id:"elephant", icon:"🐘", text:"نادر ينادي! الفيل جاهز لمساعدتك في المراجعة اليومية." },
+  { id:"xp",       icon:"⭐", text:"7 بطاقات فقط وتكسب +50 XP اليوم — لا تضيّع الفرصة!" },
+  { id:"words",    icon:"📚", text:"كلماتك الجديدة تنتظرك! خصص 5 دقائق فقط للمراجعة." },
+  { id:"custom",   icon:"💬", text:"" },
+];
+export const DAILY_CARDS       = 7;
+export const MASTERED_THRESHOLD = 3;
+export const HARD_THRESHOLD     = 3;
+export const LOADING_MSGS = [
+  "الفيل يبحث في القاموس... 📚",
+  "الذكاء الاصطناعي يقرأ أفكارك... 🧠",
+  "جاري توليد المحتوى السحري... ✨",
+  "لحظة صبر... الفيل يشرب الماء 🐘",
+  "جاري معالجة الكلمة... 🔄",
+];
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+export const todayStr     = () => new Date().toISOString().split("T")[0];
+export const yesterdayStr = () => new Date(Date.now()-86400000).toISOString().split("T")[0];
+export const randMsg      = () => LOADING_MSGS[Math.floor(Math.random()*LOADING_MSGS.length)];
+export const nDaysAgo     = (n) => { const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().split("T")[0]; };
+export const dayLabel     = (iso) => { const d=new Date(iso); return \`\${d.getDate()}/\${d.getMonth()+1}\`; };
+export const weekDayAr    = (iso) => ["أحد","إثنين","ثلاثاء","أربعاء","خميس","جمعة","سبت"][new Date(iso).getDay()];
+export const getLevelFromXP = (xp) => { let l=0; LEVELS.forEach((_,i)=>{ if(xp>=LEVELS[i].minXP) l=i; }); return l; };
+
+export const levenshtein = (a,b) => {
+  const m=a.length,n=b.length;
+  const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i===0?j:j===0?i:0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+};
+export const similarity = (a,b) => {
+  a=a.toLowerCase().trim(); b=b.toLowerCase().trim();
+  if(a===b) return 1;
+  const L=Math.max(a.length,b.length);
+  return (L-levenshtein(a,b))/L;
+};
+export const nextReviewDate = (diff,streak) => {
+  const ivs={easy:[1,3,7,14,30],medium:[1,2,4,8,16],hard:[1,1,2,3,5]};
+  const d=new Date(); d.setDate(d.getDate()+(ivs[diff]||ivs.medium)[Math.min(streak,4)]);
+  return d.toISOString().split("T")[0];
+};
+export const getDueWords   = (words) => words.filter(w=>!w.mastered||w.nextReview<=todayStr());
+export const getStatus     = (w) => w.mastered?"mastered":w.hard?"hard":w.correctStreak>0?"learning":"new";
+export const statusLabel   = (s) => ({mastered:"متقنة",hard:"صعبة",learning:"تعلم",new:"جديدة"}[s]||"جديدة");
+export const statusColors  = (s,dk) => ({
+  mastered:{ bg:dk?"#064E3B":"#ECFDF5", c:"#059669" },
+  hard:    { bg:dk?"#7F1D1D":"#FEF2F2", c:"#EF4444" },
+  learning:{ bg:dk?"#1E3A5F":"#EFF6FF", c:"#3B82F6" },
+  new:     { bg:dk?"#312E81":"#F5F3FF", c:"#7C3AED" },
+}[s]||{bg:dk?"#312E81":"#F5F3FF",c:"#7C3AED"});
+
+export const getImageUrl = (word, definition, seed) => {
+  const prompt = encodeURIComponent(
+    \`\${word}, \${(definition||"").slice(0,30)}, cute flat illustration, bright colors, white background\`
+  );
+  return \`https://image.pollinations.ai/prompt/\${prompt}?model=turbo&nologo=true&seed=\${(seed||0)||(word.length*17)}&width=400&height=220\`;
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INITIAL STATE & REDUCER
+// ══════════════════════════════════════════════════════════════════════════════
+export const initState = () => ({
+  onboarded: false,
+  profile: { name:"", language:"en", xp:0, streak:0, lastActive:null, hintPoints:30 },
+  words: [],
+  sessions: [],
+  notes: [],
+  settings: {
+    groqApiKey:"", aiModel:"compound-beta",
+    darkMode:false,
+    notifEnabled:false, notifTime:"20:00",
+    notifMessage:"streak", notifCustom:"",
+  },
+});
+
+export const reducer = (state, action) => {
+  switch(action.type) {
+    case "ONBOARD":
+      return {...state,onboarded:true,profile:{...state.profile,name:action.name,language:action.language}};
+    case "ADD_WORDS":
+      return {...state,words:[...state.words,...action.words],profile:{...state.profile,xp:state.profile.xp+action.words.length*5}};
+    case "UPDATE_WORD":
+      return {...state,words:state.words.map(w=>w.id===action.word.id?action.word:w)};
+    case "DELETE_WORD":
+      return {...state,words:state.words.filter(w=>w.id!==action.id)};
+    case "SPEND_HINTS": {
+      const cost=Math.abs(Number(action.cost??action.amount??5));
+      const cur=Number(state.profile.hintPoints)||0;
+      return {...state,profile:{...state.profile,hintPoints:Math.max(0,cur-cost)}};
+    }
+    case "AWARD_XP":
+      return {...state,profile:{...state.profile,xp:state.profile.xp+action.amount}};
+    case "LOG_SESSION":
+      return {...state,sessions:[...state.sessions,action.session]};
+    case "SAVE_NOTE":
+      return {...state,notes:[...(state.notes||[]),action.note]};
+    case "DELETE_NOTE":
+      return {...state,notes:(state.notes||[]).filter((_,i)=>i!==action.index)};
+    case "COMPLETE_SESSION": {
+      const iYest=state.profile.lastActive===yesterdayStr();
+      const iToday=state.profile.lastActive===todayStr();
+      const streak=iToday?state.profile.streak:iYest?state.profile.streak+1:1;
+      return {...state,profile:{...state.profile,xp:state.profile.xp+50,streak,lastActive:todayStr()}};
+    }
+    case "SAVE_SETTINGS":
+      return {...state,settings:{...state.settings,...action.settings}};
+    case "SAVE_PROFILE":
+      return {...state,profile:{...state.profile,...action.profile}};
+    case "_LOAD": return action.state;
+    default: return state;
+  }
+};
+` },
+  { path: "src/theme.js", content: `export const T = (dk) => ({
+  bg:       dk ? "#0F0F1A" : "#EDECF8",
+  card:     dk ? "#1A1A2E" : "#FFFFFF",
+  cardAlt:  dk ? "#1E1E30" : "#F6F4FF",
+  border:   dk ? "#2D2D48" : "#E8E4F8",
+  text:     dk ? "#E8E8F0" : "#1A1A2E",
+  textSub:  dk ? "#9999BB" : "#6B6B8A",
+  textMuted:dk ? "#66668A" : "#9999BB",
+  primary:  "#7C3AED",
+  pLight:   dk ? "#3D1F7A" : "#F5F3FF",
+  green:    "#10B981",
+  gLight:   dk ? "#064E3B" : "#ECFDF5",
+  red:      "#EF4444",
+  rLight:   dk ? "#7F1D1D" : "#FEF2F2",
+  gold:     "#F59E0B",
+  goLight:  dk ? "#451A03" : "#FFF7ED",
+  blue:     "#3B82F6",
+  bLight:   dk ? "#1E3A5F" : "#EFF6FF",
+});
+` }
+];
+
+async function buildZip() {
+  const btn = document.querySelector('button');
+  const status = document.getElementById('status');
+  btn.textContent = '⏳ جاري البناء...';
+  btn.disabled = true;
+  status.textContent = '';
+
+  try {
+    const zip = new JSZip();
+    for (const f of FILES) {
+      zip.file('nader-rn/' + f.path, f.content);
+    }
+    status.textContent = 'جاري ضغط الملفات...';
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'nader-rn.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    status.textContent = '✅ تم التحميل!';
+    btn.textContent = '⬇️ تحميل المشروع (ZIP)';
+    btn.disabled = false;
+  } catch(e) {
+    status.textContent = '❌ خطأ: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '⬇️ تحميل المشروع (ZIP)';
+  }
+}
+</script>
+</body>
+</html>
