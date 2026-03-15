@@ -21,8 +21,10 @@ jobs:
           TARGET=$(dirname "$(find . -name 'package.json' | head -n 1)")
           cd "$TARGET"
           npm install
-          # السطر اللي جاي ده بيمسح مسارات الصور اللي بتسبب المشكلة
-          sed -i 's/"icon": "[^"]*"//g; s/"image": "[^"]*"//g; s/"foregroundImage": "[^"]*"//g' app.json
+          
+          # الحل الآمن لمسح الصور بدون كسر الملف
+          jq 'del(.expo.icon, .expo.splash.image, .expo.android.adaptiveIcon.foregroundImage)' app.json > tmp.json && mv tmp.json app.json
+          
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
           keytool -genkey -v -keystore my-key.jks -alias my-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=App, OU=Dev, O=App, L=City, ST=State, C=EG"
           echo '{"android": {"keystore": {"keystorePath": "my-key.jks", "keystorePassword": "123456", "keyAlias": "my-alias", "keyPassword": "123456"}}}' > credentials.json
