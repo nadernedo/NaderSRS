@@ -22,5 +22,7 @@ jobs:
           cd "$TARGET"
           npm install
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
-          echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
+          keytool -genkey -v -keystore my-key.jks -alias my-alias -keyalg RSA -keysize 2048 -validity 10000 -storepass 123456 -keypass 123456 -dname "CN=App, OU=Dev, O=App, L=City, ST=State, C=EG"
+          echo '{"android": {"keystore": {"keystorePath": "my-key.jks", "keystorePassword": "123456", "keyAlias": "my-alias", "keyPassword": "123456"}}}' > credentials.json
+          echo '{"build": {"preview": {"android": {"buildType": "apk", "credentialsSource": "local"}}}}' > eas.json
           eas build --platform android --profile preview --non-interactive
