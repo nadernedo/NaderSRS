@@ -20,7 +20,7 @@ jobs:
       - name: Install
         run: npm install
       - name: Prepare APK
-        run: echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
+        run: |
+          echo '{ "build": { "preview": { "android": { "buildType": "apk" } } } }' > eas.json
       - name: Build
         run: eas build --platform android --profile preview --non-interactive
-
