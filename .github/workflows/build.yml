@@ -27,8 +27,31 @@ jobs:
           
           cd "$TARGET"
           
+          # الكود ده بيكتب ملف app.json سليم 100% غصب عن الـ AI
+          cat << 'EOF' > app.json
+          {
+            "expo": {
+              "name": "Nader",
+              "slug": "nader-rn",
+              "version": "1.0.0",
+              "orientation": "portrait",
+              "icon": "./assets/icon.png",
+              "userInterfaceStyle": "automatic",
+              "splash": { "image": "./assets/splash.png", "resizeMode": "contain", "backgroundColor": "#7C3AED" },
+              "android": {
+                "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#7C3AED" },
+                "package": "com.nader.app",
+                "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "INTERNET"]
+              },
+              "plugins": [
+                ["expo-notifications", { "icon": "./assets/icon.png", "color": "#7C3AED" }],
+                ["expo-image-picker", { "photosPermission": "Allow Nader to access photos." }]
+              ]
+            }
+          }
+          EOF
+          
           npm install
-          # الحل هنا: استخدام npx expo install عشان يجيب النسخة المتوافقة بالظبط
           npx expo install expo-device
           
           eas init --id 8292f70a-cd98-46c3-b4c1-cd08af4ce95e --force --non-interactive
